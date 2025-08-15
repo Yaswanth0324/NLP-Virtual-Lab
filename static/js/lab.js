@@ -1,0 +1,769 @@
+// Lab-specific JavaScript functionality
+class LabManager {
+    constructor(moduleName) {
+        this.moduleName = moduleName;
+        this.currentResults = null;
+        this.initializeElements();
+        this.setupEventListeners();
+        this.setupModule();
+    }
+    
+    initializeElements() {
+        this.inputText = document.getElementById('inputText');
+        this.operation = document.getElementById('operation');
+        this.processBtn = document.getElementById('processBtn');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.results = document.getElementById('results');
+        this.visualization = document.getElementById('visualization');
+        this.processingSpinner = document.getElementById('processingSpinner');
+        this.explanationContent = document.getElementById('explanationContent');
+    }
+    
+    setupEventListeners() {
+        this.processBtn.addEventListener('click', () => this.processText());
+        this.clearBtn.addEventListener('click', () => this.clearResults());
+        
+        // Example text buttons
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.inputText.value = e.target.dataset.text;
+                this.inputText.focus();
+            });
+        });
+        
+        // Auto-process on operation change
+        this.operation.addEventListener('change', () => {
+            if (this.inputText.value.trim()) {
+                this.processText();
+            }
+        });
+    }
+    
+    setupModule() {
+        this.setupOperationOptions();
+        this.setupExplanation();
+    }
+    
+    setupOperationOptions() {
+        const operations = this.getOperationsForModule();
+        this.operation.innerHTML = '';
+        
+        operations.forEach(op => {
+            const option = document.createElement('option');
+            option.value = op.value;
+            option.textContent = op.label;
+            this.operation.appendChild(option);
+        });
+    }
+    
+    getOperationsForModule() {
+        const operationMap = {
+            'text_preprocessing': [
+                { value: 'preprocess', label: 'Complete Preprocessing Pipeline' },
+                { value: 'tokenize', label: 'Tokenization' },
+                { value: 'stem', label: 'Stemming' },
+                { value: 'lemmatize', label: 'Lemmatization' }
+            ],
+            'pos_tagging': [
+                { value: 'pos_tag', label: 'Part-of-Speech Tagging' }
+            ],
+            'ngram_modeling': [
+                { value: 'ngrams', label: 'N-gram Generation' }
+            ],
+            'named_entity_recognition': [
+                { value: 'ner', label: 'Named Entity Recognition' }
+            ],
+            'sentiment_analysis': [
+                { value: 'sentiment', label: 'Sentiment Analysis' }
+            ],
+            'chunking': [
+                { value: 'chunk', label: 'Noun Phrase Chunking' }
+            ],
+            'text_classification': [
+                { value: 'sentiment', label: 'Sentiment Classification' }
+            ],
+            'word_embeddings': [
+                { value: 'tokenize', label: 'Text Tokenization' }
+            ]
+        };
+        
+        return operationMap[this.moduleName] || [
+            { value: 'tokenize', label: 'Tokenization' }
+        ];
+    }
+    
+    setupExplanation() {
+        const explanations = {
+            'text_preprocessing': `
+                <h6>Text Preprocessing</h6>
+                <p>Text preprocessing is the crucial first step in NLP that cleans and prepares raw text for analysis. It involves several key steps:</p>
+                <ul>
+                    <li><strong>Tokenization:</strong> Breaking text into individual words or tokens</li>
+                    <li><strong>Lowercasing:</strong> Converting all text to lowercase for consistency</li>
+                    <li><strong>Punctuation Removal:</strong> Removing punctuation marks that don't add meaning</li>
+                    <li><strong>Stopword Removal:</strong> Eliminating common words like "the", "is", "and"</li>
+                    <li><strong>Stemming:</strong> Reducing words to their root form (e.g., "running" → "run")</li>
+                    <li><strong>Lemmatization:</strong> Finding the dictionary form of words using grammar rules</li>
+                </ul>
+                <p>Each step serves a specific purpose in preparing text for downstream NLP tasks.</p>
+            `,
+            'pos_tagging': `
+                <h6>Part-of-Speech Tagging</h6>
+                <p>POS tagging assigns grammatical categories to each word in a sentence. Common tags include:</p>
+                <ul>
+                    <li><strong>NN:</strong> Noun, singular (e.g., "cat", "house")</li>
+                    <li><strong>NNS:</strong> Noun, plural (e.g., "cats", "houses")</li>
+                    <li><strong>VB:</strong> Verb, base form (e.g., "run", "eat")</li>
+                    <li><strong>VBD:</strong> Verb, past tense (e.g., "ran", "ate")</li>
+                    <li><strong>JJ:</strong> Adjective (e.g., "big", "red")</li>
+                    <li><strong>RB:</strong> Adverb (e.g., "quickly", "very")</li>
+                    <li><strong>DT:</strong> Determiner (e.g., "the", "a")</li>
+                </ul>
+                <p>POS tagging is essential for understanding sentence structure and meaning.</p>
+            `,
+            'ngram_modeling': `
+                <h6>N-gram Modeling</h6>
+                <p>N-grams are contiguous sequences of n items from a text. They help capture context and word relationships:</p>
+                <ul>
+                    <li><strong>Unigrams (1-gram):</strong> Individual words</li>
+                    <li><strong>Bigrams (2-gram):</strong> Two consecutive words</li>
+                    <li><strong>Trigrams (3-gram):</strong> Three consecutive words</li>
+                </ul>
+                <p>N-grams are useful for:</p>
+                <ul>
+                    <li>Language modeling and text prediction</li>
+                    <li>Autocomplete systems</li>
+                    <li>Spell checking</li>
+                    <li>Text generation</li>
+                </ul>
+            `,
+            'named_entity_recognition': `
+                <h6>Named Entity Recognition (NER)</h6>
+                <p>NER identifies and classifies named entities in text into predefined categories:</p>
+                <ul>
+                    <li><strong>PERSON:</strong> People's names (e.g., "John Smith")</li>
+                    <li><strong>ORGANIZATION:</strong> Companies, agencies (e.g., "Apple Inc.")</li>
+                    <li><strong>GPE:</strong> Geopolitical entities (e.g., "New York", "USA")</li>
+                    <li><strong>DATE:</strong> Dates and times (e.g., "January 1, 2023")</li>
+                    <li><strong>MONEY:</strong> Monetary values (e.g., "$100")</li>
+                    <li><strong>PERCENT:</strong> Percentages (e.g., "50%")</li>
+                </ul>
+                <p>NER is crucial for information extraction, question answering, and knowledge graphs.</p>
+            `,
+            'sentiment_analysis': `
+                <h6>Sentiment Analysis</h6>
+                <p>Sentiment analysis determines the emotional tone of text. It typically classifies text as:</p>
+                <ul>
+                    <li><strong>Positive:</strong> Expresses positive emotions or opinions</li>
+                    <li><strong>Negative:</strong> Expresses negative emotions or opinions</li>
+                    <li><strong>Neutral:</strong> Objective or balanced tone</li>
+                </ul>
+                <p>VADER (Valence Aware Dictionary and sEntiment Reasoner) provides scores for:</p>
+                <ul>
+                    <li><strong>Positive:</strong> Degree of positive sentiment</li>
+                    <li><strong>Negative:</strong> Degree of negative sentiment</li>
+                    <li><strong>Neutral:</strong> Degree of neutral sentiment</li>
+                    <li><strong>Compound:</strong> Overall sentiment score (-1 to 1)</li>
+                </ul>
+            `,
+            'chunking': `
+                <h6>Chunking and Parsing</h6>
+                <p>Chunking groups words into meaningful phrases, typically noun phrases (NP) or verb phrases (VP):</p>
+                <ul>
+                    <li><strong>Noun Phrases:</strong> Groups of words functioning as a noun</li>
+                    <li><strong>Verb Phrases:</strong> Groups of words functioning as a verb</li>
+                </ul>
+                <p>Chunking is useful for:</p>
+                <ul>
+                    <li>Information extraction</li>
+                    <li>Question answering</li>
+                    <li>Semantic analysis</li>
+                    <li>Understanding sentence structure</li>
+                </ul>
+            `
+        };
+        
+        this.explanationContent.innerHTML = explanations[this.moduleName] || 
+            '<p>Learn about this NLP concept through interactive examples and practice.</p>';
+    }
+    
+    async processText() {
+        const text = this.inputText.value.trim();
+        const operation = this.operation.value;
+        
+        if (!text) {
+            showAlert('Please enter some text to process.', 'warning');
+            return;
+        }
+        
+        this.showSpinner();
+        this.processBtn.disabled = true;
+        
+        try {
+            const response = await makeAPIRequest('/api/process', {
+                method: 'POST',
+                body: JSON.stringify({
+                    text: text,
+                    operation: operation
+                })
+            });
+            
+            this.currentResults = response;
+            this.displayResults(response);
+            this.displayVisualization(response);
+            
+        } catch (error) {
+            console.error('Processing error:', error);
+            this.displayError('Failed to process text. Please try again.');
+        } finally {
+            this.hideSpinner();
+            this.processBtn.disabled = false;
+        }
+    }
+    
+    displayResults(results) {
+        if (results.error) {
+            this.displayError(results.error);
+            return;
+        }
+        
+        const operation = this.operation.value;
+        let html = '';
+        
+        switch (operation) {
+            case 'preprocess':
+                html = this.formatPreprocessingResults(results);
+                break;
+            case 'tokenize':
+                html = this.formatTokenizationResults(results);
+                break;
+            case 'pos_tag':
+                html = this.formatPOSResults(results);
+                break;
+            case 'ngrams':
+                html = this.formatNgramResults(results);
+                break;
+            case 'ner':
+                html = this.formatNERResults(results);
+                break;
+            case 'sentiment':
+                html = this.formatSentimentResults(results);
+                break;
+            case 'stem':
+                html = this.formatStemmingResults(results);
+                break;
+            case 'lemmatize':
+                html = this.formatLemmatizationResults(results);
+                break;
+            case 'chunk':
+                html = this.formatChunkingResults(results);
+                break;
+            default:
+                html = '<div class="alert alert-info">Results will appear here.</div>';
+        }
+        
+        this.results.innerHTML = html;
+        this.results.classList.add('fade-in');
+    }
+    
+    formatPreprocessingResults(results) {
+        if (!results.steps) return '<div class="alert alert-danger">No preprocessing steps found.</div>';
+        
+        let html = '<h6>Preprocessing Steps</h6>';
+        html += '<div class="preprocessing-steps">';
+        
+        results.steps.forEach(step => {
+            html += `
+                <div class="step-item mb-3">
+                    <h6 class="text-primary">${step.name}</h6>
+                    <div class="step-content p-3 bg-light rounded">
+                        <code>${step.text}</code>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    formatTokenizationResults(results) {
+        let html = '<h6>Tokenization Results</h6>';
+        html += `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="result-item">
+                        <h6>Words (${results.word_count})</h6>
+                        <div class="tokens-container">
+                            ${results.words.map(word => `<span class="badge bg-primary me-1 mb-1">${word}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="result-item">
+                        <h6>Sentences (${results.sentence_count})</h6>
+                        <ol class="sentences-list">
+                            ${results.sentences.map(sentence => `<li>${sentence}</li>`).join('')}
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        `;
+        return html;
+    }
+    
+    formatPOSResults(results) {
+        let html = '<h6>Part-of-Speech Tags</h6>';
+        html += '<div class="pos-tags-container mb-3">';
+        
+        results.tagged.forEach(([word, pos]) => {
+            const posClass = this.getPOSClass(pos);
+            html += `<span class="pos-tag ${posClass}" title="${pos}">${word}</span>`;
+        });
+        
+        html += '</div>';
+        
+        html += '<h6>POS Distribution</h6>';
+        html += '<div class="pos-distribution">';
+        
+        Object.entries(results.pos_groups).forEach(([pos, words]) => {
+            html += `
+                <div class="pos-group mb-2">
+                    <strong>${pos}:</strong> ${words.join(', ')}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    formatNgramResults(results) {
+        let html = '<h6>N-gram Analysis</h6>';
+        
+        ['unigrams', 'bigrams', 'trigrams'].forEach(type => {
+            if (results[type]) {
+                html += `
+                    <div class="ngram-section mb-3">
+                        <h6 class="text-primary">${type.charAt(0).toUpperCase() + type.slice(1)}</h6>
+                        <div class="ngram-frequencies">
+                            ${Object.entries(results[type].frequencies).map(([ngram, freq]) => 
+                                `<span class="badge bg-secondary me-1 mb-1">${ngram} (${freq})</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        return html;
+    }
+    
+    formatNERResults(results) {
+        let html = '<h6>Named Entities</h6>';
+        
+        if (results.entities.length === 0) {
+            html += '<div class="alert alert-info">No named entities found in the text.</div>';
+            return html;
+        }
+        
+        html += '<div class="entities-container mb-3">';
+        results.entities.forEach(entity => {
+            const entityClass = this.getEntityClass(entity.label);
+            html += `<span class="entity-tag ${entityClass}" title="${entity.label}">${entity.entity}</span>`;
+        });
+        html += '</div>';
+        
+        html += '<h6>Entity Groups</h6>';
+        Object.entries(results.entity_groups).forEach(([label, entities]) => {
+            html += `
+                <div class="entity-group mb-2">
+                    <strong>${label}:</strong> ${entities.join(', ')}
+                </div>
+            `;
+        });
+        
+        return html;
+    }
+    
+    formatSentimentResults(results) {
+        const sentimentClass = results.overall_sentiment.toLowerCase();
+        let html = `
+            <h6>Sentiment Analysis</h6>
+            <div class="sentiment-overview mb-3">
+                <h4 class="sentiment-${sentimentClass}">${results.overall_sentiment}</h4>
+                <p>Confidence: ${(results.confidence * 100).toFixed(1)}%</p>
+            </div>
+            <div class="sentiment-breakdown">
+                <h6>Detailed Scores</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="sentiment-score">
+                            <span class="sentiment-positive">Positive</span>
+                            <strong>${(results.breakdown.positive * 100).toFixed(1)}%</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="sentiment-score">
+                            <span class="sentiment-negative">Negative</span>
+                            <strong>${(results.breakdown.negative * 100).toFixed(1)}%</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="sentiment-score">
+                            <span class="sentiment-neutral">Neutral</span>
+                            <strong>${(results.breakdown.neutral * 100).toFixed(1)}%</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return html;
+    }
+    
+    formatStemmingResults(results) {
+        let html = '<h6>Stemming Results</h6>';
+        html += '<div class="stemming-pairs">';
+        
+        results.stemmed_pairs.forEach(([original, stemmed]) => {
+            html += `
+                <div class="word-pair mb-2">
+                    <span class="original-word">${original}</span>
+                    <span class="mx-2">→</span>
+                    <span class="stemmed-word text-primary">${stemmed}</span>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    formatLemmatizationResults(results) {
+        let html = '<h6>Lemmatization Results</h6>';
+        html += '<div class="lemmatization-pairs">';
+        
+        results.lemmatized_pairs.forEach(([original, lemmatized]) => {
+            html += `
+                <div class="word-pair mb-2">
+                    <span class="original-word">${original}</span>
+                    <span class="mx-2">→</span>
+                    <span class="lemmatized-word text-primary">${lemmatized}</span>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    formatChunkingResults(results) {
+        let html = '<h6>Chunking Results</h6>';
+        
+        if (results.noun_phrases && results.noun_phrases.length > 0) {
+            html += '<div class="noun-phrases mb-3">';
+            html += '<h6>Noun Phrases</h6>';
+            results.noun_phrases.forEach(phrase => {
+                html += `<span class="badge bg-success me-1 mb-1">${phrase}</span>`;
+            });
+            html += '</div>';
+        }
+        
+        // Parse tree is now displayed only in the visualization section
+        html += '<div class="alert alert-info">Parse tree visualization available in the Visualization section.</div>';
+        
+        return html;
+    }
+    
+    getPOSClass(pos) {
+        if (pos.startsWith('NN')) return 'noun';
+        if (pos.startsWith('VB')) return 'verb';
+        if (pos.startsWith('JJ')) return 'adjective';
+        if (pos.startsWith('RB')) return 'adverb';
+        return 'other';
+    }
+    
+    getEntityClass(label) {
+        switch (label) {
+            case 'PERSON': return 'person';
+            case 'ORGANIZATION': case 'ORG': return 'organization';
+            case 'GPE': case 'LOCATION': return 'location';
+            default: return 'other';
+        }
+    }
+    
+    displayVisualization(results) {
+        const operation = this.operation.value;
+        
+        // Handle chunking parse tree visualization
+        if (operation === 'chunk') {
+            if (results.chunk_tree) {
+                this.createParseTree(results.chunk_tree);
+                return;
+            } else {
+                this.visualization.innerHTML = '<div class="alert alert-info">No parse tree available.</div>';
+                return;
+            }
+        }
+        
+        if (!results.visualization) {
+            this.visualization.innerHTML = '<div class="alert alert-secondary">No visualization available for this operation.</div>';
+            return;
+        }
+        
+        const visType = results.visualization.type;
+        const visData = results.visualization.data;
+        
+        switch (visType) {
+            case 'pos_chart':
+                this.createPOSChart(visData);
+                break;
+            case 'ngram_chart':
+                this.createNgramChart(visData);
+                break;
+            case 'entity_chart':
+                this.createEntityChart(visData);
+                break;
+            case 'sentiment_chart':
+                this.createSentimentChart(visData);
+                break;
+            default:
+                this.visualization.innerHTML = '<div class="alert alert-info">Visualization not available for this operation.</div>';
+        }
+    }
+    
+    createPOSChart(data) {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'posChart';
+        canvas.width = 400;
+        canvas.height = 300;
+        
+        this.visualization.innerHTML = '';
+        this.visualization.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        const labels = Object.keys(data);
+        const values = Object.values(data).map(arr => arr.length);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Count',
+                    data: values,
+                    backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    createNgramChart(data) {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'ngramChart';
+        canvas.width = 400;
+        canvas.height = 300;
+        
+        this.visualization.innerHTML = '';
+        this.visualization.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Use bigrams for visualization
+        const bigramData = data.bigrams || {};
+        const labels = Object.keys(bigramData);
+        const values = Object.values(bigramData);
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 205, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Top Bigrams'
+                    }
+                }
+            }
+        });
+    }
+    
+    createEntityChart(data) {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'entityChart';
+        canvas.width = 400;
+        canvas.height = 300;
+        
+        this.visualization.innerHTML = '';
+        this.visualization.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        const labels = Object.keys(data);
+        const values = Object.values(data).map(arr => arr.length);
+        
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 205, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Entity Distribution'
+                    }
+                }
+            }
+        });
+    }
+    
+    createSentimentChart(data) {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'sentimentChart';
+        canvas.width = 400;
+        canvas.height = 300;
+        
+        this.visualization.innerHTML = '';
+        this.visualization.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Positive', 'Negative', 'Neutral'],
+                datasets: [{
+                    label: 'Sentiment Score',
+                    data: [data.Positive, data.Negative, data.Neutral],
+                    backgroundColor: [
+                        'rgba(25, 135, 84, 0.8)',
+                        'rgba(220, 53, 69, 0.8)',
+                        'rgba(108, 117, 125, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(25, 135, 84, 1)',
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(108, 117, 125, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    }
+    
+    createParseTree(chunkTree) {
+        this.visualization.innerHTML = '';
+        
+        if (!chunkTree) {
+            this.visualization.innerHTML = '<div class="alert alert-info">No parse tree available.</div>';
+            return;
+        }
+        
+        // Create a simple visual representation of the parse tree
+        const treeContainer = document.createElement('div');
+        treeContainer.className = 'parse-tree-container';
+        treeContainer.style.cssText = `
+            font-family: monospace;
+            background: #f8f9fa;
+            color: #212529;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+        `;
+        
+        let treeHTML = '<div class="parse-tree">';
+        treeHTML += '<h6>Parse Tree Structure</h6>';
+        treeHTML += '<div style="margin-top: 1rem;">';
+        treeHTML += chunkTree.replace(/\n/g, '<br>').replace(/\s/g, '&nbsp;');
+        treeHTML += '</div>';
+        treeHTML += '</div>';
+        
+        treeContainer.innerHTML = treeHTML;
+        this.visualization.appendChild(treeContainer);
+    }
+    
+    displayError(message) {
+        this.results.innerHTML = `
+            <div class="alert alert-danger">
+                <i data-feather="alert-circle"></i>
+                ${message}
+            </div>
+        `;
+        updateIcons();
+    }
+    
+    clearResults() {
+        this.inputText.value = '';
+        this.results.innerHTML = '<div class="alert alert-info"><i data-feather="info"></i> Enter some text and click "Process Text" to see the results here.</div>';
+        this.visualization.innerHTML = '<div class="alert alert-secondary"><i data-feather="eye"></i> Visual representation will appear here after processing.</div>';
+        updateIcons();
+    }
+    
+    showSpinner() {
+        this.processingSpinner.style.display = 'block';
+        this.results.style.display = 'none';
+    }
+    
+    hideSpinner() {
+        this.processingSpinner.style.display = 'none';
+        this.results.style.display = 'block';
+    }
+}
+
+// Initialize lab when page loads
+function initializeLab(moduleName) {
+    window.labManager = new LabManager(moduleName);
+}
+
+// Export for global use
+window.initializeLab = initializeLab;

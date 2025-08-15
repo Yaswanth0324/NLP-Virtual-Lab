@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module_info.title }} - NLP Virtual Lab{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Lab Header -->
+        <div class="lab-header mb-4">
+            <div class="d-flex align-items-center mb-3">
+                <i data-feather="{{ module_info.icon }}" class="me-2"></i>
+                <h1>{{ module_info.title }}</h1>
+            </div>
+            <p class="lead">{{ module_info.description }}</p>
+            <div class="lab-actions">
+                <a href="{{ url_for('quiz', module_name=module_name) }}" class="btn btn-outline-primary">
+                    <i data-feather="help-circle"></i>
+                    Take Quiz
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i data-feather="arrow-left"></i>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+
+        <!-- Lab Content -->
+        <div class="row">
+            <!-- Input Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="edit-3"></i>
+                            Input Text
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="inputText" class="form-label">Enter your text:</label>
+                            <textarea id="inputText" class="form-control" rows="6" 
+                                placeholder="Type or paste your text here...">The quick brown fox jumps over the lazy dog. This is a sample sentence for NLP processing.</textarea>
+                        </div>
+                        
+                        <!-- Operation Selection -->
+                        <div class="mb-3" id="operationSelect">
+                            <label for="operation" class="form-label">Select Operation:</label>
+                            <select id="operation" class="form-select">
+                                <!-- Options will be populated by JavaScript based on module -->
+                            </select>
+                        </div>
+                        
+                        <!-- Processing Controls -->
+                        <div class="d-grid gap-2">
+                            <button id="processBtn" class="btn btn-primary" type="button">
+                                <i data-feather="play"></i>
+                                Process Text
+                            </button>
+                            <button id="clearBtn" class="btn btn-outline-secondary" type="button">
+                                <i data-feather="trash-2"></i>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Examples Section -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="book"></i>
+                            Example Texts
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="example-texts">
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The quick brown fox jumps over the lazy dog.">
+                                Simple Sentence
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Apple Inc. was founded by Steve Jobs in Cupertino, California in 1976.">
+                                Named Entities
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="I love this product! It's amazing and works perfectly. Best purchase ever!">
+                                Positive Sentiment
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="This is terrible. I hate it and want my money back. Worst experience ever!">
+                                Negative Sentiment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="monitor"></i>
+                            Results
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="processingSpinner" class="text-center" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                            <p class="mt-2">Processing your text...</p>
+                        </div>
+                        
+                        <div id="results" class="results-container">
+                            <div class="alert alert-info">
+                                <i data-feather="info"></i>
+                                Enter some text and click "Process Text" to see the results here.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Visualization Section -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="bar-chart-2"></i>
+                            Visualization
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="visualization" class="visualization-container">
+                            <div class="alert alert-secondary">
+                                <i data-feather="eye"></i>
+                                Visual representation will appear here after processing.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explanation Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="info"></i>
+                            Understanding {{ module_info.title }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="explanationContent">
+                            <!-- Content will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/lab.js') }}"></script>
+<script src="{{ url_for('static', filename='js/visualizations.js') }}"></script>
+<script>
+    // Initialize the lab with the current module
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeLab('{{ module_name }}');
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Home - NLP Virtual Lab{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Hero Section -->
+        <div class="hero-section text-center py-5 mb-5">
+            <div class="container">
+                <h1 class="display-4 fw-bold">Welcome to NLP Virtual Lab</h1>
+                <p class="lead">Interactive learning platform for Natural Language Processing concepts</p>
+                <p class="text-muted">Explore hands-on modules, visual demonstrations, and quizzes to master NLP techniques</p>
+                <a href="#modules" class="btn btn-primary btn-lg mt-3">
+                    <i data-feather="play"></i>
+                    Start Learning
+                </a>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row mb-5">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i data-feather="cpu" class="feature-icon mb-3"></i>
+                        <h5 class="card-title">Interactive Processing</h5>
+                        <p class="card-text">Real-time text processing with immediate visual feedback and results.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i data-feather="bar-chart-2" class="feature-icon mb-3"></i>
+                        <h5 class="card-title">Visual Demonstrations</h5>
+                        <p class="card-text">Charts, trees, and color-coded outputs to understand NLP concepts better.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i data-feather="award" class="feature-icon mb-3"></i>
+                        <h5 class="card-title">Knowledge Testing</h5>
+                        <p class="card-text">Quizzes and practice exercises to test your understanding.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lab Modules Section -->
+        <div id="modules" class="mb-5">
+            <h2 class="text-center mb-4">Lab Modules</h2>
+            <div class="row">
+                {% for module_id, module in modules.items() %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card lab-module-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <i data-feather="{{ module.icon }}" class="me-2"></i>
+                                <h5 class="card-title mb-0">{{ module.title }}</h5>
+                            </div>
+                            <p class="card-text">{{ module.description }}</p>
+                            <div class="mt-auto">
+                                <a href="{{ url_for('lab', module_name=module_id) }}" class="btn btn-outline-primary btn-sm me-2">
+                                    <i data-feather="play"></i>
+                                    Try Lab
+                                </a>
+                                <a href="{{ url_for('quiz', module_name=module_id) }}" class="btn btn-outline-secondary btn-sm">
+                                    <i data-feather="help-circle"></i>
+                                    Quiz
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Learning Path Section -->
+        <div class="learning-path mb-5">
+            <h2 class="text-center mb-4">Recommended Learning Path</h2>
+            <div class="row">
+                <div class="col-md-8 mx-auto">
+                    <div class="card">
+                        <div class="card-body">
+                            <ol class="learning-steps">
+                                <li class="mb-3">
+                                    <strong>Text Preprocessing</strong> - Learn the fundamentals of preparing text for analysis
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Part-of-Speech Tagging</strong> - Understand grammatical categories of words
+                                </li>
+                                <li class="mb-3">
+                                    <strong>N-Gram Modeling</strong> - Explore word sequences and context
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Named Entity Recognition</strong> - Extract meaningful entities from text
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Sentiment Analysis</strong> - Determine emotional tone of text
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Advanced Topics</strong> - Chunking, parsing, and word embeddings
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="stats-section text-center py-4">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <h3 class="stat-number">8</h3>
+                        <p class="stat-label">Lab Modules</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <h3 class="stat-number">25+</h3>
+                        <p class="stat-label">Interactive Exercises</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <h3 class="stat-number">15+</h3>
+                        <p class="stat-label">Quiz Questions</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <h3 class="stat-number">∞</h3>
+                        <p class="stat-label">Learning Possibilities</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

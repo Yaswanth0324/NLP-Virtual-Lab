@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module_info.title }} Quiz - NLP Virtual Lab{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Quiz Header -->
+        <div class="quiz-header mb-4">
+            <div class="d-flex align-items-center mb-3">
+                <i data-feather="help-circle" class="me-2"></i>
+                <h1>{{ module_info.title }} Quiz</h1>
+            </div>
+            <p class="lead">Test your understanding of {{ module_info.title.lower() }}</p>
+            <div class="quiz-actions">
+                <a href="{{ url_for('lab', module_name=module_name) }}" class="btn btn-outline-primary">
+                    <i data-feather="play"></i>
+                    Try Lab
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i data-feather="arrow-left"></i>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+
+        <!-- Quiz Content -->
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <!-- Quiz Start Screen -->
+                <div id="quizStart" class="card">
+                    <div class="card-body text-center">
+                        <i data-feather="play-circle" class="quiz-icon mb-3"></i>
+                        <h3>Ready to Test Your Knowledge?</h3>
+                        <p class="text-muted mb-4">This quiz will test your understanding of {{ module_info.title.lower() }}. Take your time and choose the best answer for each question.</p>
+                        <div class="quiz-info mb-4">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="quiz-stat">
+                                        <h4 id="questionCount">-</h4>
+                                        <p>Questions</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="quiz-stat">
+                                        <h4>No Time Limit</h4>
+                                        <p>Take Your Time</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="quiz-stat">
+                                        <h4>Instant</h4>
+                                        <p>Feedback</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="startQuizBtn" class="btn btn-primary btn-lg">
+                            <i data-feather="play"></i>
+                            Start Quiz
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quiz Questions -->
+                <div id="quizQuestions" class="card" style="display: none;">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                Question <span id="currentQuestionNum">1</span> of <span id="totalQuestions">-</span>
+                            </h5>
+                            <div class="quiz-progress">
+                                <div class="progress" style="width: 200px;">
+                                    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="questionContainer">
+                            <!-- Questions will be populated by JavaScript -->
+                        </div>
+                        <div class="quiz-navigation mt-4">
+                            <button id="prevBtn" class="btn btn-outline-secondary" disabled>
+                                <i data-feather="arrow-left"></i>
+                                Previous
+                            </button>
+                            <button id="nextBtn" class="btn btn-primary ms-2">
+                                Next
+                                <i data-feather="arrow-right"></i>
+                            </button>
+                            <button id="submitBtn" class="btn btn-success ms-2" style="display: none;">
+                                <i data-feather="check"></i>
+                                Submit Quiz
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quiz Results -->
+                <div id="quizResults" class="card" style="display: none;">
+                    <div class="card-body text-center">
+                        <div id="resultIcon" class="quiz-icon mb-3">
+                            <!-- Icon will be set by JavaScript -->
+                        </div>
+                        <h3 id="resultTitle">Quiz Complete!</h3>
+                        <div class="result-score mb-4">
+                            <h2 id="finalScore" class="display-4">-</h2>
+                            <p class="text-muted">Score</p>
+                        </div>
+                        <div id="resultMessage" class="alert mb-4">
+                            <!-- Message will be set by JavaScript -->
+                        </div>
+                        <div class="quiz-actions">
+                            <button id="retakeQuizBtn" class="btn btn-outline-primary me-2">
+                                <i data-feather="refresh-cw"></i>
+                                Retake Quiz
+                            </button>
+                            <a href="{{ url_for('lab', module_name=module_name) }}" class="btn btn-primary">
+                                <i data-feather="play"></i>
+                                Try Lab
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="quizLoading" class="card" style="display: none;">
+                    <div class="card-body text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading quiz questions...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+<script>
+    // Initialize the quiz with the current module
+    document.addEventListener('DOMContentLoaded', function() {
+        const quiz = initializeQuiz('{{ module_name }}');
+        // Initialize the quiz to load questions and show count
+        if (quiz && typeof quiz.initializeQuiz === 'function') {
+            quiz.initializeQuiz();
+        }
+    });
+</script>
+{% endblock %}

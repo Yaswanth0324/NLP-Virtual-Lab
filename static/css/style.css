@@ -1,0 +1,403 @@
+/* Custom styles for NLP Virtual Lab */
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(111, 66, 193, 0.1));
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Feature Icons */
+.feature-icon {
+    width: 3rem;
+    height: 3rem;
+    stroke: var(--bs-primary);
+    stroke-width: 1.5;
+}
+
+/* Lab Module Cards */
+.lab-module-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid var(--bs-border-color);
+}
+
+.lab-module-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.lab-module-card .card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Learning Steps */
+.learning-steps {
+    list-style: none;
+    counter-reset: step-counter;
+    padding-left: 0;
+}
+
+.learning-steps li {
+    counter-increment: step-counter;
+    position: relative;
+    padding-left: 3rem;
+}
+
+.learning-steps li::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: var(--bs-primary);
+    color: white;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* Statistics */
+.stats-section {
+    background: var(--bs-light);
+    border-radius: 0.5rem;
+    margin: 2rem 0;
+}
+
+.stat-item {
+    padding: 1rem;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+}
+
+/* Lab Interface */
+.lab-header {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.lab-actions {
+    margin-top: 1rem;
+}
+
+.lab-actions .btn {
+    margin-right: 0.5rem;
+}
+
+/* Results Container */
+.results-container {
+    min-height: 300px;
+}
+
+.result-item {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background: var(--bs-light);
+}
+
+.result-item h6 {
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+}
+
+.preprocessing-steps {
+    list-style: none;
+    padding-left: 0;
+}
+
+.preprocessing-steps li {
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid var(--bs-primary);
+    background: var(--bs-light);
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+
+/* POS Tags */
+.pos-tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin: 0.125rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.pos-tag.noun {
+    background: rgba(13, 110, 253, 0.1);
+    color: var(--bs-primary);
+}
+
+.pos-tag.verb {
+    background: rgba(25, 135, 84, 0.1);
+    color: var(--bs-success);
+}
+
+.pos-tag.adjective {
+    background: rgba(255, 193, 7, 0.1);
+    color: var(--bs-warning);
+}
+
+.pos-tag.adverb {
+    background: rgba(220, 53, 69, 0.1);
+    color: var(--bs-danger);
+}
+
+.pos-tag.other {
+    background: rgba(108, 117, 125, 0.1);
+    color: var(--bs-secondary);
+}
+
+/* Named Entity Tags */
+.entity-tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin: 0.125rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.entity-tag.person {
+    background: rgba(13, 110, 253, 0.1);
+    color: var(--bs-primary);
+}
+
+.entity-tag.organization {
+    background: rgba(25, 135, 84, 0.1);
+    color: var(--bs-success);
+}
+
+.entity-tag.location {
+    background: rgba(255, 193, 7, 0.1);
+    color: var(--bs-warning);
+}
+
+.entity-tag.other {
+    background: rgba(108, 117, 125, 0.1);
+    color: var(--bs-secondary);
+}
+
+/* Sentiment Colors */
+.sentiment-positive {
+    color: var(--bs-success);
+}
+
+.sentiment-negative {
+    color: var(--bs-danger);
+}
+
+.sentiment-neutral {
+    color: var(--bs-secondary);
+}
+
+/* Visualization Container */
+.visualization-container {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-container {
+    width: 100%;
+    height: 300px;
+    position: relative;
+}
+
+/* Example Buttons */
+.example-texts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.example-btn {
+    font-size: 0.875rem;
+}
+
+/* Quiz Styles */
+.quiz-header {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.quiz-actions {
+    margin-top: 1rem;
+}
+
+.quiz-actions .btn {
+    margin-right: 0.5rem;
+}
+
+.quiz-icon {
+    width: 4rem;
+    height: 4rem;
+    stroke: var(--bs-primary);
+    stroke-width: 1.5;
+}
+
+.quiz-stat {
+    text-align: center;
+    padding: 1rem;
+}
+
+.quiz-stat h4 {
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+}
+
+.quiz-stat p {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+.quiz-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.question-option {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.question-option:hover {
+    background: var(--bs-light);
+    border-color: var(--bs-primary);
+}
+
+.question-option.selected {
+    background: rgba(13, 110, 253, 0.1);
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+}
+
+.question-option.correct {
+    background: rgba(25, 135, 84, 0.1);
+    border-color: var(--bs-success);
+    color: var(--bs-success);
+}
+
+.question-option.incorrect {
+    background: rgba(220, 53, 69, 0.1);
+    border-color: var(--bs-danger);
+    color: var(--bs-danger);
+}
+
+.result-score {
+    margin: 2rem 0;
+}
+
+.result-score h2 {
+    color: var(--bs-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 3rem 0;
+    }
+    
+    .hero-section h1 {
+        font-size: 2rem;
+    }
+    
+    .lab-actions .btn,
+    .quiz-actions .btn {
+        margin-bottom: 0.5rem;
+    }
+    
+    .quiz-navigation {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .quiz-navigation .btn {
+        width: 100%;
+    }
+}
+
+/* Dark theme adjustments */
+[data-bs-theme="dark"] .stats-section {
+    background: var(--bs-dark);
+    border: 1px solid var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .result-item {
+    background: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .preprocessing-steps li {
+    background: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .question-option {
+    background: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .question-option:hover {
+    background: var(--bs-secondary);
+}
+
+/* Animation classes */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
