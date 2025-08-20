@@ -2866,3 +2866,162 @@ class NLPProcessor:
                 correct += 1
         
         return int((correct / len(questions)) * 100)
+    
+    def chatbot_response(self, message):
+        """Generate a response to user's chat message about NLP concepts"""
+        # Convert message to lowercase for easier matching
+        message = message.lower().strip()
+        
+        # Handle greetings
+        if any(greeting in message for greeting in ['hello', 'hi', 'hey', 'greetings']):
+            return "Hello! I'm your NLP Virtual Assistant. I can help you learn about Natural Language Processing concepts. What would you like to know?"
+        
+        # Handle demonstration requests with sample text
+        if 'demonstrate' in message or 'example' in message:
+            sample_text = "Natural Language Processing (NLP) is a fascinating field of artificial intelligence that focuses on the interaction between computers and humans through natural language. The ultimate objective of NLP is to read, decipher, understand, and make sense of human languages in a manner that is valuable."
+            
+            if 'tokenization' in message or 'tokenize' in message:
+                result = self.tokenize(sample_text)
+                return f"Here's a tokenization demonstration on sample text:\n\nSample text: {sample_text}\n\nWords: {result['words'][:10]}...\nSentence count: {result['sentence_count']}"
+            
+            elif 'preprocessing' in message:
+                result = self.preprocess(sample_text)
+                return f"Here's a text preprocessing demonstration:\n\nOriginal: {result['original'][:50]}...\n\nSteps:\n1. Lowercased: {result['lowercased'][:50]}...\n2. No punctuation: {result['no_punctuation'][:50]}...\n3. Tokenized: {result['tokens'][:10]}...\n4. Stopwords removed: {result['filtered_tokens'][:10]}...\n5. Stemmed: {result['stemmed'][:10]}..."
+            
+            elif 'pos' in message or 'part-of-speech' in message:
+                result = self.pos_tag(sample_text)
+                pos_examples = list(result['pos_groups'].items())[:5]
+                pos_str = "\n".join([f"{pos}: {words[:3]}" for pos, words in pos_examples])
+                return f"Here's a POS tagging demonstration:\n\nSample text: {sample_text[:50]}...\n\nPOS tags found:\n{pos_str}"
+            
+            elif 'n-gram' in message or 'ngram' in message:
+                result = self.generate_ngrams(sample_text)
+                bigram_example = list(result['bigrams']['frequencies'].items())[:3]
+                bigram_str = "\n".join([f"{gram}: {freq}" for gram, freq in bigram_example])
+                return f"Here's an N-gram demonstration:\n\nSample text: {sample_text[:50]}...\n\nCommon bigrams:\n{bigram_str}"
+            
+            elif 'named entity' in message or 'ner' in message:
+                result = self.named_entity_recognition(sample_text)
+                if result.get('entities'):
+                    entity_examples = result['entities'][:3]
+                    entity_str = "\n".join([f"{e['entity']} ({e['label']})" for e in entity_examples])
+                    return f"Here's a Named Entity Recognition demonstration:\n\nSample text: {sample_text[:50]}...\n\nEntities found:\n{entity_str}"
+                else:
+                    return f"Here's a Named Entity Recognition demonstration:\n\nSample text: {sample_text[:50]}...\n\nNo named entities found in this sample text."
+            
+            elif 'sentiment' in message:
+                result = self.sentiment_analysis(sample_text)
+                return f"Here's a Sentiment Analysis demonstration:\n\nSample text: {sample_text[:50]}...\n\nOverall sentiment: {result['overall_sentiment']}\nConfidence: {result['confidence']:.2f}"
+            
+            elif 'stem' in message:
+                result = self.stem_text(sample_text)
+                stem_examples = result['stemmed_pairs'][:10]
+                stem_str = "\n".join([f"{word} -> {stem}" for word, stem in stem_examples])
+                return f"Here's a Stemming demonstration:\n\nSample text: {sample_text[:50]}...\n\nStemming examples:\n{stem_str}"
+            
+            elif 'lemmatization' in message or 'lemmatize' in message:
+                result = self.lemmatize_text(sample_text)
+                lemma_examples = result['lemmatized_pairs'][:10]
+                lemma_str = "\n".join([f"{word} -> {lemma}" for word, lemma in lemma_examples])
+                return f"Here's a Lemmatization demonstration:\n\nSample text: {sample_text[:50]}...\n\nLemmatization examples:\n{lemma_str}"
+            
+            elif 'chunk' in message:
+                result = self.chunk_text(sample_text)
+                chunk_examples = result['noun_phrases'][:5]
+                chunk_str = "\n".join(chunk_examples)
+                return f"Here's a Chunking demonstration:\n\nSample text: {sample_text[:50]}...\n\nNoun phrases found:\n{chunk_str}"
+            
+            else:
+                return ("I'd be happy to demonstrate an NLP technique for you! Please specify which technique you'd like to see: "
+                       "tokenization, preprocessing, POS tagging, N-grams, named entity recognition, sentiment analysis, stemming, lemmatization, or chunking.")
+        
+        # Handle questions about specific NLP topics
+        if 'tokenization' in message or 'tokenize' in message:
+            return ("Tokenization is the process of breaking text into individual words, phrases, symbols, or other meaningful elements called tokens. "
+                   "It's the first step in most NLP pipelines. For example, the sentence 'I love NLP!' would be tokenized into ['I', 'love', 'NLP', '!']. "
+                   "Would you like me to demonstrate tokenization on a sample text?")
+        
+        if 'preprocessing' in message:
+            return ("Text preprocessing is a crucial step in NLP that involves cleaning and preparing raw text data for analysis. "
+                   "Common preprocessing steps include: lowercasing, removing punctuation, removing stopwords, stemming, and lemmatization. "
+                   "Each step helps to normalize the text and reduce noise. Would you like to see an example of text preprocessing?")
+        
+        if 'pos' in message or 'part-of-speech' in message:
+            return ("Part-of-Speech (POS) tagging is the process of marking up a word in a text as corresponding to a particular part of speech. "
+                   "Common POS tags include: Nouns (NN), Verbs (VB), Adjectives (JJ), and Adverbs (RB). "
+                   "For example, in the sentence 'The cat sat', the POS tags would be: The/DT cat/NN sat/VBD. "
+                   "Would you like me to demonstrate POS tagging on a sample text?")
+        
+        if 'n-gram' in message or 'ngram' in message:
+            return ("N-grams are contiguous sequences of n items from a given sample of text or speech. "
+                   "Common types include: unigrams (1-grams), bigrams (2-grams), and trigrams (3-grams). "
+                   "For example, the sentence 'I love NLP' has the bigrams: 'I love' and 'love NLP'. "
+                   "N-grams are used in language modeling, text prediction, and other NLP tasks. "
+                   "Would you like me to generate n-grams from a sample text?")
+        
+        if 'named entity' in message or 'ner' in message:
+            return ("Named Entity Recognition (NER) is the process of locating and classifying named entities mentioned in unstructured text. "
+                   "Common entity types include: persons (PERSON), organizations (ORG), locations (LOCATION), dates (DATE), and monetary values (MONEY). "
+                   "For example, in the sentence 'Apple was founded by Steve Jobs in California', NER would identify 'Apple' as ORG, 'Steve Jobs' as PERSON, and 'California' as LOCATION. "
+                   "Would you like me to demonstrate NER on a sample text?")
+        
+        if 'sentiment' in message:
+            return ("Sentiment analysis is the process of determining the emotional tone or attitude expressed in text. "
+                   "It typically classifies text as positive, negative, or neutral. "
+                   "For example, the sentence 'I love this product!' would be classified as positive, while 'This is terrible' would be negative. "
+                   "Would you like me to perform sentiment analysis on a sample text?")
+        
+        if 'stem' in message:
+            return ("Stemming is the process of reducing words to their root form by removing suffixes. "
+                   "For example, 'running', 'runs', and 'ran' would all be stemmed to 'run'. "
+                   "Stemming is useful for text normalization but may produce non-real words. "
+                   "Would you like me to demonstrate stemming on a sample text?")
+        
+        if 'lemmatization' in message or 'lemmatize' in message:
+            return ("Lemmatization is the process of reducing words to their base or dictionary form (lemma). "
+                   "Unlike stemming, lemmatization considers the context and produces real words. "
+                   "For example, 'better' would be lemmatized to 'good'. "
+                   "Would you like me to demonstrate lemmatization on a sample text?")
+        
+        if 'chunk' in message:
+            return ("Chunking (also known as shallow parsing) is the process of grouping words into meaningful phrases or constituents. "
+                   "Common chunk types include noun phrases (NP) and verb phrases (VP). "
+                   "For example, in the sentence 'The tall tree', chunking would identify 'The tall tree' as a noun phrase. "
+                   "Would you like me to demonstrate chunking on a sample text?")
+        
+        if 'word embedding' in message:
+            return ("Word embeddings are numerical representations of words that capture semantic meaning. "
+                   "They allow words with similar meanings to have similar representations. "
+                   "Popular word embedding models include Word2Vec, GloVe, and FastText. "
+                   "For example, in word embedding space, 'king - man + woman ≈ queen'. "
+                   "Would you like to learn more about how word embeddings work?")
+        
+        # Handle learning path questions
+        if 'learn' in message or 'study' in message:
+            return ("I can help you learn NLP concepts! Our NLP Virtual Lab covers: "
+                   "Text Preprocessing, Part-of-Speech Tagging, N-Gram Modeling, Named Entity Recognition, "
+                   "Sentiment Analysis, Text Classification, Word Embeddings, and Chunking & Parsing. "
+                   "Which topic would you like to start with?")
+        
+        # Handle practice questions
+        if 'practice' in message or 'exercise' in message:
+            return ("Great! Practicing is key to mastering NLP concepts. You can: "
+                   "1. Try our interactive labs to see NLP techniques in action "
+                   "2. Take quizzes to test your knowledge "
+                   "3. Experiment with the NLP tools in our lab "
+                   "Which would you like to do?")
+        
+        # Handle general questions about what the assistant can do
+        if 'help' in message or 'do' in message:
+            return ("I'm your NLP Virtual Assistant! I can help you: "
+                   "1. Explain NLP concepts like tokenization, POS tagging, and sentiment analysis "
+                   "2. Demonstrate NLP techniques on sample text "
+                   "3. Guide you through learning NLP concepts "
+                   "4. Help you practice with exercises "
+                   "What would you like to know about?")
+        
+        # Default response for unrecognized queries
+        return ("I'm here to help you learn about Natural Language Processing! "
+               "You can ask me about specific NLP concepts like tokenization, POS tagging, or sentiment analysis, "
+               "and I'll explain them in detail. You can also ask me to demonstrate techniques on sample text. "
+               "What would you like to learn about today?")

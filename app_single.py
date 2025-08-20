@@ -7,6 +7,13 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import UserMixin
 from datetime import datetime
 import json
+import random
+
+# Try to import requests for internet search functionality
+try:
+    import requests
+except ImportError:
+    requests = None
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -30,6 +37,68 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # Initialize the app with the extension
 db.init_app(app)
+
+# --- Start of Updated Chatbot Code ---
+
+# --- Simple NLP Rule-Based Logic ---
+# This is a basic dictionary of rules for our chatbot.
+GREETING_KEYWORDS = ("hello", "hi", "greetings", "hey", "what's up")
+GREETING_RESPONSES = ["Hello!", "Hi there!", "Hey!", "Greetings! How can I help you today?"]
+HELP_KEYWORDS = ("help", "assist", "support", "question")
+HELP_RESPONSES = ["Of course, I'm here to help. What do you need assistance with?", "How can I assist you?", "I'm here to support you. What's your question?"]
+FAREWELL_KEYWORDS = ("bye", "goodbye", "see you", "later")
+FAREWELL_RESPONSES = ["Goodbye!", "See you later!", "Have a great day!"]
+FALLBACK_RESPONSES = [
+    "I'm not sure how to respond to that. Can you rephrase?",
+    "Sorry, I didn't understand that. Could you ask in a different way?",
+    "My apologies, I'm still learning. What else can I help with?",
+    "I don't have an answer for that right now."
+]
+
+def get_chatbot_response(user_input):
+    """
+    Analyzes the user's input and returns an appropriate response based on predefined rules.
+    """
+    lowered_input = user_input.lower()
+
+    # Check for greetings
+    if any(keyword in lowered_input for keyword in GREETING_KEYWORDS):
+        return random.choice(GREETING_RESPONSES)
+
+    # Check for help requests
+    if any(keyword in lowered_input for keyword in HELP_KEYWORDS):
+        return random.choice(HELP_RESPONSES)
+
+    # Check for farewells
+    if any(keyword in lowered_input for keyword in FAREWELL_KEYWORDS):
+        return random.choice(FAREWELL_RESPONSES)
+    
+    # If no specific rule matches, return a fallback response
+    return random.choice(FALLBACK_RESPONSES)
+
+@app.route('/api/chatbot', methods=['POST'])
+def chatbot_api():
+    """
+    Handles chat messages and provides a response using the simple rule-based NLP logic.
+    """
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        session_id = data.get('session_id', 'default') # Session ID is maintained for potential future use
+
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+
+        # Get a response from our simple NLP logic
+        response = get_chatbot_response(message)
+
+        return jsonify({'response': response, 'session_id': session_id})
+    except Exception as e:
+        logging.error(f"Error in chatbot API: {str(e)}")
+        return jsonify({'error': f"Server Error: {str(e)}"}), 500
+
+# --- End of Updated Chatbot Code ---
+
 
 # Models
 class User(UserMixin, db.Model):
@@ -110,6 +179,10 @@ def index():
 @app.route('/readme')
 def readme():
     return render_template('readme.html')
+
+@app.route('/chatbot')
+def chatbot():
+    return render_template('chatbot.html')
 
 
 @app.route('/lab/<module_name>')
