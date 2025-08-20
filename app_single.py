@@ -9,11 +9,26 @@ from datetime import datetime
 import json
 import random
 
-# Try to import requests for internet search functionality
+# --- New Imports for .env file and AI Generation ---
+# Make sure to install the required libraries:
+# pip install python-dotenv google-generativeai requests
+from dotenv import load_dotenv
+
 try:
     import requests
 except ImportError:
     requests = None
+
+try:
+    import google.generativeai as genai
+    google_ai_available = True
+except ImportError:
+    genai = None
+    google_ai_available = False
+# --- End of New Imports ---
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -38,61 +53,172 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize the app with the extension
 db.init_app(app)
 
+
 # --- Start of Updated Chatbot Code ---
 
-# --- Simple NLP Rule-Based Logic ---
-# This is a basic dictionary of rules for our chatbot.
-GREETING_KEYWORDS = ("hello", "hi", "greetings", "hey", "what's up")
-GREETING_RESPONSES = ["Hello!", "Hi there!", "Hey!", "Greetings! How can I help you today?"]
-HELP_KEYWORDS = ("help", "assist", "support", "question")
-HELP_RESPONSES = ["Of course, I'm here to help. What do you need assistance with?", "How can I assist you?", "I'm here to support you. What's your question?"]
-FAREWELL_KEYWORDS = ("bye", "goodbye", "see you", "later")
-FAREWELL_RESPONSES = ["Goodbye!", "See you later!", "Have a great day!"]
-FALLBACK_RESPONSES = [
-    "I'm not sure how to respond to that. Can you rephrase?",
-    "Sorry, I didn't understand that. Could you ask in a different way?",
-    "My apologies, I'm still learning. What else can I help with?",
-    "I don't have an answer for that right now."
-]
-
-def get_chatbot_response(user_input):
+def search_internet(query):
     """
-    Analyzes the user's input and returns an appropriate response based on predefined rules.
+    Searches the internet for a given query using the DuckDuckGo API.
     """
-    lowered_input = user_input.lower()
+    if not requests:
+        logging.warning("The 'requests' library is not installed. Internet search is disabled.")
+        return "Internet search is unavailable because the 'requests' library is missing."
 
-    # Check for greetings
-    if any(keyword in lowered_input for keyword in GREETING_KEYWORDS):
-        return random.choice(GREETING_RESPONSES)
+    try:
+        search_url = "https://api.duckduckgo.com/"
+        params = {
+            "q": query,
+            "format": "json",
+            "no_html": 1,
+            "skip_disambig": 1
+        }
+        response = requests.get(search_url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
 
-    # Check for help requests
-    if any(keyword in lowered_input for keyword in HELP_KEYWORDS):
-        return random.choice(HELP_RESPONSES)
+        results = []
+        if data.get("AbstractText"):
+            results.append(data["AbstractText"])
+        
+        related_topics = data.get("RelatedTopics", [])
+        for topic in related_topics:
+            if topic.get("Text"):
+                results.append(topic["Text"])
 
-    # Check for farewells
-    if any(keyword in lowered_input for keyword in FAREWELL_KEYWORDS):
-        return random.choice(FAREWELL_RESPONSES)
-    
-    # If no specific rule matches, return a fallback response
-    return random.choice(FALLBACK_RESPONSES)
+        if not results:
+            return "I couldn't find any direct information on that topic. Could you try rephrasing the question?"
+            
+        return " ".join(results[:3])
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error during internet search: {e}")
+        return "Sorry, I'm having trouble connecting to the internet right now."
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during search: {e}")
+        return "An unexpected error occurred while searching."
+
+
+def generate_gemini_response(query, context):
+    """
+    Generates a response using the Google Gemini API, based on the provided context.
+    """
+    if not google_ai_available:
+        return "The Google AI backend is not installed. Please run 'pip install google-generativeai'."
+
+    # The API key is now loaded securely from the .env file
+    api_key = os.environ.get("GEMINI_API_KEY")
+
+    if not api_key:
+        logging.warning("Gemini API key not found in .env file. Using fallback response.")
+        return "The AI assistant is not configured. Please provide a Gemini API key in a .env file."
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        
+        # --- ** CORRECTED: Language Detection Logic ** ---
+        lower_query = query.lower()
+
+        # 1. Detect Language (checking for more specific terms first)
+        requested_language = 'Python' # Default
+        if 'javascript' in lower_query or ' js ' in f' {lower_query} ' or 'node.js' in lower_query:
+            requested_language = 'JavaScript'
+        elif 'java' in lower_query:
+            requested_language = 'Java'
+        elif 'c++' in lower_query or 'cpp' in lower_query:
+            requested_language = 'C++'
+        elif ' r ' in f' {lower_query} ': # Pad with spaces to match ' r ' safely
+            requested_language = 'R'
+
+
+        # 2. Detect Intent more precisely
+        is_code_request = 'code' in lower_query or 'implement' in lower_query or 'snippet' in lower_query
+        is_explanation_request = 'explain' in lower_query or 'what is' in lower_query or 'describe' in lower_query or 'how does' in lower_query
+        is_code_only_request = 'only code' in lower_query or 'just the code' in lower_query
+        is_example_request = 'example' in lower_query
+
+        # 3. Select Prompt based on detected intent
+        prompt = ""
+        language_specific_instruction = ""
+        if requested_language == 'JavaScript':
+            language_specific_instruction = "The JavaScript code should be modern and functional, suitable for a Node.js environment. Provide standalone functions where possible. If a common library is standard for the task (e.g., from npm), mention the package and show its usage."
+
+        if is_code_only_request:
+            prompt = f"""You are a code generation assistant.
+Provide ONLY the {requested_language} code for the following query in a single markdown code block. {language_specific_instruction}
+Do NOT add any explanation, introduction, or conclusion.
+
+User's Query: "{query}"
+"""
+        elif is_code_request and not is_explanation_request:
+             prompt = f"""You are a code generation assistant.
+Provide a functional {requested_language} code example for the user's query. {language_specific_instruction}
+Use the search context for guidance, but generate a standard, working example even if the context is sparse.
+Enclose the code in a single markdown code block. Do not add long explanations before or after the code.
+
+Search Context: "{context}"
+User's Query: "{query}"
+"""
+        elif is_explanation_request and not is_code_request:
+            prompt = f"""You are an NLP expert. The user is asking for an explanation.
+Based on the provided search context, provide a detailed explanation for the user's query.
+Use markdown for formatting (bolding, bullet points).
+If the user asks for an "example", provide a clear, textual example, not a code snippet.
+Do NOT include any code examples.
+
+Search Context: "{context}"
+User's Query: "{query}"
+"""
+        else: # Default case (e.g., "NER", "tokenization code example") - provide both explanation and code
+            prompt = f"""You are an expert NLP assistant. Your goal is to provide a direct, helpful, and well-structured answer.
+
+**Instructions:**
+1.  Start with a clear, concise explanation of the topic requested by the user.
+2.  After the explanation, provide a functional code example in **{requested_language}**. {language_specific_instruction}
+3.  Use markdown for formatting (bolding, bullet points, and code blocks).
+4.  Do not apologize or say you cannot provide an answer. Use the context to formulate the best possible response.
+
+---
+**Search Context:**
+{context}
+---
+
+**User's Query:**
+{query}
+---
+
+**Your Expert Answer:**
+"""
+
+        response = model.generate_content(prompt)
+        return response.text.strip()
+
+    except Exception as e:
+        logging.error(f"Error generating Gemini response: {e}")
+        return f"Sorry, I encountered an API error: {str(e)}"
+
 
 @app.route('/api/chatbot', methods=['POST'])
 def chatbot_api():
     """
-    Handles chat messages and provides a response using the simple rule-based NLP logic.
+    Handles chat messages by searching the internet and generating a response.
     """
     try:
         data = request.get_json()
         message = data.get('message', '').strip()
-        session_id = data.get('session_id', 'default') # Session ID is maintained for potential future use
+        session_id = data.get('session_id', 'default')
 
         if not message:
             return jsonify({'error': 'Message is required'}), 400
 
-        # Get a response from our simple NLP logic
-        response = get_chatbot_response(message)
+        # 1. Search the internet for context
+        search_context = search_internet(message)
+        
+        # 2. Generate a response based on the search context using Gemini
+        final_response = generate_gemini_response(message, search_context)
 
-        return jsonify({'response': response, 'session_id': session_id})
+        return jsonify({'response': final_response, 'session_id': session_id})
+        
     except Exception as e:
         logging.error(f"Error in chatbot API: {str(e)}")
         return jsonify({'error': f"Server Error: {str(e)}"}), 500

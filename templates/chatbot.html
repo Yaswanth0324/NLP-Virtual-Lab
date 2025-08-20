@@ -111,9 +111,30 @@
     </div>
     </div>
 </div>
+
+<!-- ** NEW: Edit Code Modal ** -->
+<div id="edit-modal" class="modal-backdrop">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Edit Code</h5>
+            <button type="button" class="btn-close" id="modal-close-btn"></button>
+        </div>
+        <div class="modal-body">
+            <textarea id="modal-textarea"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="modal-cancel-btn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="modal-save-btn">Save & Use</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
+<!-- ** 1. ADDED MARKED.JS LIBRARY ** -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize Feather icons
@@ -123,6 +144,11 @@
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
+        const editModal = document.getElementById('edit-modal');
+        const modalTextarea = document.getElementById('modal-textarea');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalSaveBtn = document.getElementById('modal-save-btn');
         
         // Generate a session ID for conversation continuity
         let sessionId = localStorage.getItem('chatbotSessionId') || 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -133,35 +159,99 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'} mb-3`;
             
+            let messageContent = '';
+
             if (isUser) {
-                messageDiv.innerHTML = `
+                messageContent = `
                     <div class="d-flex justify-content-end">
                         <div class="flex-grow-1 me-2 text-end">
                             <strong>You</strong>
-                            <p class="mb-1">${message}</p>
+                            <p class="mb-1"></p> <!-- Container for text -->
                         </div>
                         <div class="flex-shrink-0">
                             <i data-feather="user" class="ms-2"></i>
                         </div>
                     </div>
                 `;
+                messageDiv.innerHTML = messageContent;
+                // Safely set user message as text content to prevent HTML injection
+                messageDiv.querySelector('p').textContent = message;
             } else {
-                messageDiv.innerHTML = `
+                messageContent = `
                     <div class="d-flex">
                         <div class="flex-shrink-0">
                             <i data-feather="cpu" class="me-2"></i>
                         </div>
                         <div class="flex-grow-1">
                             <strong>NLP Assistant</strong>
-                            <p class="mb-1">${message}</p>
+                            <div class="mb-1 bot-response-content"></div> <!-- Container for HTML -->
                         </div>
                     </div>
                 `;
+                messageDiv.innerHTML = messageContent;
+                const botResponseContent = messageDiv.querySelector('.bot-response-content');
+                // For bot messages, parse markdown and render as HTML
+                botResponseContent.innerHTML = marked.parse(message);
+                
+                // Add Copy and Edit buttons to code blocks
+                addCodeBlockButtons(botResponseContent);
             }
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             feather.replace();
+        }
+
+        // Function to add buttons to code blocks
+        function addCodeBlockButtons(element) {
+            const codeBlocks = element.querySelectorAll('pre');
+            codeBlocks.forEach(block => {
+                const codeWrapper = document.createElement('div');
+                codeWrapper.className = 'code-block-wrapper';
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'code-block-buttons';
+
+                const copyButton = document.createElement('button');
+                copyButton.innerHTML = '<i data-feather="copy" class="icon-sm"></i> Copy';
+                copyButton.className = 'btn btn-sm btn-outline-secondary copy-btn';
+                copyButton.onclick = (e) => {
+                    const code = block.querySelector('code').innerText;
+                    // Use a temporary textarea to copy text for better compatibility
+                    const textArea = document.createElement("textarea");
+                    textArea.value = code;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        copyButton.innerHTML = '<i data-feather="check" class="icon-sm"></i> Copied!';
+                        setTimeout(() => {
+                            copyButton.innerHTML = '<i data-feather="copy" class="icon-sm"></i> Copy';
+                            feather.replace();
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                    }
+                    document.body.removeChild(textArea);
+                    feather.replace();
+                };
+
+                const editButton = document.createElement('button');
+                editButton.innerHTML = '<i data-feather="edit-2" class="icon-sm"></i> Edit';
+                editButton.className = 'btn btn-sm btn-outline-secondary edit-btn';
+                editButton.onclick = (e) => {
+                    const code = block.querySelector('code').innerText;
+                    modalTextarea.value = code;
+                    editModal.style.display = 'flex';
+                };
+
+                buttonContainer.appendChild(editButton);
+                buttonContainer.appendChild(copyButton);
+                
+                block.parentNode.insertBefore(codeWrapper, block);
+                codeWrapper.appendChild(block);
+                codeWrapper.appendChild(buttonContainer);
+            });
         }
         
         // Function to process user input and generate response
@@ -203,7 +293,9 @@
             .then(response => response.json())
             .then(data => {
                 // Remove typing indicator
-                document.getElementById('typing-indicator').remove();
+                if(document.getElementById('typing-indicator')) {
+                    document.getElementById('typing-indicator').remove();
+                }
                 
                 // Update session ID if provided in response
                 if (data.session_id) {
@@ -220,7 +312,9 @@
             })
             .catch(error => {
                 // Remove typing indicator
-                document.getElementById('typing-indicator').remove();
+                if(document.getElementById('typing-indicator')) {
+                    document.getElementById('typing-indicator').remove();
+                }
                 
                 // Add error message to chat
                 addMessage('bot', "Sorry, I encountered an error processing your request.");
@@ -228,14 +322,34 @@
             });
         }
         
-        // Event listeners
+        // --- Modal Logic ---
+        function closeModal() {
+            editModal.style.display = 'none';
+        }
+
+        modalSaveBtn.onclick = () => {
+            userInput.value = modalTextarea.value;
+            userInput.focus();
+            closeModal();
+        };
+        modalCancelBtn.onclick = closeModal;
+        modalCloseBtn.onclick = closeModal;
+        editModal.onclick = (e) => {
+            if (e.target === editModal) {
+                closeModal();
+            }
+        };
+
+        // --- Event Listeners ---
         sendBtn.addEventListener('click', processUserInput);
         
         userInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 processUserInput();
             }
-// Add event listeners for conversation starters
+        });
+
+        // Add event listeners for conversation starters
         const conversationStarters = document.querySelectorAll('.conversation-starter');
         conversationStarters.forEach(starter => {
             starter.addEventListener('click', function(e) {
@@ -244,7 +358,6 @@
                 userInput.value = message;
                 processUserInput();
             });
-        });
         });
         
         // Add animation to typing dots
@@ -276,6 +389,111 @@
     
     #chat-container {
         background-color: var(--bs-body-bg);
+    }
+
+    /* Styles for rendered code blocks */
+    .bot-response-content pre {
+        background-color: #282c34; /* Dark background for code */
+        color: #abb2bf; /* Light text color */
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto; /* Allow horizontal scrolling for long code lines */
+        font-family: 'Courier New', Courier, monospace;
+        margin-bottom: 0;
+    }
+
+    .bot-response-content code {
+        font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* Styles for new Copy/Edit buttons */
+    .code-block-wrapper {
+        position: relative;
+        margin-bottom: 1rem;
+    }
+    .code-block-buttons {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+    .code-block-buttons .btn {
+        background-color: #4a5568;
+        color: white;
+        border: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+    }
+    .code-block-wrapper:hover .code-block-buttons .btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .code-block-buttons .btn:hover {
+        background-color: #2d3748;
+    }
+    .code-block-buttons .icon-sm {
+        width: 1rem;
+        height: 1rem;
+        margin-right: 0.25rem;
+        vertical-align: text-bottom;
+    }
+
+    /* ** NEW: Modal Styles ** */
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        justify-content: center;
+        align-items: center;
+        z-index: 1050;
+    }
+    .modal-content {
+        background-color: white;
+        border-radius: 0.5rem;
+        width: 90%;
+        max-width: 600px;
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+    }
+    .modal-header {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-body {
+        padding: 1rem;
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+    #modal-textarea {
+        width: 100%;
+        height: 300px;
+        font-family: 'Courier New', Courier, monospace;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+    }
+    .modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    .btn-close {
+        border: none;
+        background: transparent;
+        font-size: 1.5rem;
+        cursor: pointer;
     }
 </style>
 {% endblock %}
