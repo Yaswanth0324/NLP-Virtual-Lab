@@ -180,6 +180,26 @@ class LabManager {
                     <li>Semantic analysis</li>
                     <li>Understanding sentence structure</li>
                 </ul>
+            `,
+            'text_classification': `
+                <h6>Text Classification</h6>
+                <p>Text classification automatically categorizes text into predefined groups. It's one of the most fundamental NLP tasks with many applications:</p>
+                <ul>
+                    <li><strong>Spam Detection:</strong> Classifying emails as "Spam" or "Not Spam".</li>
+                    <li><strong>Topic Modeling:</strong> Assigning topics like "Sports", "Politics", or "Technology" to news articles.</li>
+                    <li><strong>Sentiment Analysis:</strong> A type of classification that determines if a text is "Positive", "Negative", or "Neutral".</li>
+                </ul>
+                <p>Models are trained on labeled data to learn the patterns associated with each category.</p>
+            `,
+            'word_embeddings': `
+                <h6>Word Embeddings</h6>
+                <p>Word embeddings are numerical vector representations of words that capture their semantic meaning and relationships. Instead of treating words as isolated strings, embeddings place them in a multi-dimensional space where similar words are closer together.</p>
+                <ul>
+                    <li><strong>Key Idea:</strong> Words that appear in similar contexts have similar meanings.</li>
+                    <li><strong>Famous Example:</strong> Vector("King") - Vector("Man") + Vector("Woman") results in a vector very close to Vector("Queen").</li>
+                    <li><strong>Popular Models:</strong> Word2Vec, GloVe, and FastText are common algorithms for creating word embeddings.</li>
+                </ul>
+                <p>Embeddings are crucial for deep learning models as they allow neural networks to work with the meaning of words, not just their surface form.</p>
             `
         };
         

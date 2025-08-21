@@ -1,18 +1,16 @@
 import os
 import logging
 from flask import Flask, render_template, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask_login import UserMixin
 from datetime import datetime
 import json
 import random
 
-# --- New Imports for .env file and AI Generation ---
+# --- New Imports for .env file and DB connection ---
 # Make sure to install the required libraries:
-# pip install python-dotenv google-generativeai requests
+# pip install python-dotenv google-generativeai requests psycopg2-binary
 from dotenv import load_dotenv
+import psycopg2 # For connecting to PostgreSQL
 
 try:
     import requests
@@ -33,25 +31,12 @@ load_dotenv()
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
-
 # Create the app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///nlp_lab.db")
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
-# Initialize the app with the extension
-db.init_app(app)
+# --- Database configuration is now handled directly in the route ---
 
 
 # --- Start of Updated Chatbot Code ---
@@ -105,7 +90,6 @@ def generate_gemini_response(query, context):
     if not google_ai_available:
         return "The Google AI backend is not installed. Please run 'pip install google-generativeai'."
 
-    # The API key is now loaded securely from the .env file
     api_key = os.environ.get("GEMINI_API_KEY")
 
     if not api_key:
@@ -116,28 +100,21 @@ def generate_gemini_response(query, context):
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
-        # --- ** CORRECTED: Language Detection Logic ** ---
         lower_query = query.lower()
-
-        # 1. Detect Language (checking for more specific terms first)
-        requested_language = 'Python' # Default
+        requested_language = 'Python'
         if 'javascript' in lower_query or ' js ' in f' {lower_query} ' or 'node.js' in lower_query:
             requested_language = 'JavaScript'
         elif 'java' in lower_query:
             requested_language = 'Java'
         elif 'c++' in lower_query or 'cpp' in lower_query:
             requested_language = 'C++'
-        elif ' r ' in f' {lower_query} ': # Pad with spaces to match ' r ' safely
+        elif ' r ' in f' {lower_query} ':
             requested_language = 'R'
 
-
-        # 2. Detect Intent more precisely
         is_code_request = 'code' in lower_query or 'implement' in lower_query or 'snippet' in lower_query
         is_explanation_request = 'explain' in lower_query or 'what is' in lower_query or 'describe' in lower_query or 'how does' in lower_query
         is_code_only_request = 'only code' in lower_query or 'just the code' in lower_query
-        is_example_request = 'example' in lower_query
-
-        # 3. Select Prompt based on detected intent
+        
         prompt = ""
         language_specific_instruction = ""
         if requested_language == 'JavaScript':
@@ -151,7 +128,7 @@ Do NOT add any explanation, introduction, or conclusion.
 User's Query: "{query}"
 """
         elif is_code_request and not is_explanation_request:
-             prompt = f"""You are a code generation assistant.
+                prompt = f"""You are a code generation assistant.
 Provide a functional {requested_language} code example for the user's query. {language_specific_instruction}
 Use the search context for guidance, but generate a standard, working example even if the context is sparse.
 Enclose the code in a single markdown code block. Do not add long explanations before or after the code.
@@ -169,7 +146,7 @@ Do NOT include any code examples.
 Search Context: "{context}"
 User's Query: "{query}"
 """
-        else: # Default case (e.g., "NER", "tokenization code example") - provide both explanation and code
+        else:
             prompt = f"""You are an expert NLP assistant. Your goal is to provide a direct, helpful, and well-structured answer.
 
 **Instructions:**
@@ -211,10 +188,7 @@ def chatbot_api():
         if not message:
             return jsonify({'error': 'Message is required'}), 400
 
-        # 1. Search the internet for context
         search_context = search_internet(message)
-        
-        # 2. Generate a response based on the search context using Gemini
         final_response = generate_gemini_response(message, search_context)
 
         return jsonify({'response': final_response, 'session_id': session_id})
@@ -226,75 +200,21 @@ def chatbot_api():
 # --- End of Updated Chatbot Code ---
 
 
-# Models
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    progress = db.relationship('UserProgress', backref='user', lazy=True)
+# --- MODELS REMOVED ---
+# The User, UserProgress, and QuizQuestion SQLAlchemy models have been removed.
+# The application will now connect directly to the database when needed.
 
-class UserProgress(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    module_name = db.Column(db.String(100), nullable=False)
-    completed = db.Column(db.Boolean, default=False)
-    score = db.Column(db.Integer, default=0)
-    attempts = db.Column(db.Integer, default=0)
-    last_attempt = db.Column(db.DateTime, default=datetime.utcnow)
-    __table_args__ = (db.UniqueConstraint('user_id', 'module_name'),)
-
-class QuizQuestion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    module_name = db.Column(db.String(100), nullable=False)
-    question = db.Column(db.Text, nullable=False)
-    options = db.Column(db.JSON, nullable=False)
-    correct_answer = db.Column(db.Integer, nullable=False)
-    explanation = db.Column(db.Text)
 
 # Lab modules configuration
 LAB_MODULES = {
-    'text_preprocessing': {
-        'title': 'Text Preprocessing',
-        'description': 'Learn tokenization, lowercasing, punctuation removal, and stopword removal',
-        'icon': 'file-text'
-    },
-    'pos_tagging': {
-        'title': 'Part-of-Speech Tagging',
-        'description': 'Identify grammatical categories of words',
-        'icon': 'tag'
-    },
-    'ngram_modeling': {
-        'title': 'N-Gram Modeling',
-        'description': 'Analyze word sequences and context',
-        'icon': 'layers'
-    },
-    'named_entity_recognition': {
-        'title': 'Named Entity Recognition',
-        'description': 'Extract entities like names, places, and organizations',
-        'icon': 'user'
-    },
-    'sentiment_analysis': {
-        'title': 'Sentiment Analysis',
-        'description': 'Determine emotional tone of text',
-        'icon': 'heart'
-    },
-    'text_classification': {
-        'title': 'Text Classification',
-        'description': 'Categorize text into predefined classes',
-        'icon': 'folder'
-    },
-    'word_embeddings': {
-        'title': 'Word Embeddings',
-        'description': 'Convert text to numerical representations',
-        'icon': 'grid'
-    },
-    'chunking': {
-        'title': 'Chunking & Parsing',
-        'description': 'Group words into meaningful phrases',
-        'icon': 'git-branch'
-    }
+    'text_preprocessing': {'title': 'Text Preprocessing', 'description': 'Learn tokenization, lowercasing, punctuation removal, and stopword removal', 'icon': 'file-text'},
+    'pos_tagging': {'title': 'Part-of-Speech Tagging', 'description': 'Identify grammatical categories of words', 'icon': 'tag'},
+    'ngram_modeling': {'title': 'N-Gram Modeling', 'description': 'Analyze word sequences and context', 'icon': 'layers'},
+    'named_entity_recognition': {'title': 'Named Entity Recognition', 'description': 'Extract entities like names, places, and organizations', 'icon': 'user'},
+    'sentiment_analysis': {'title': 'Sentiment Analysis', 'description': 'Determine emotional tone of text', 'icon': 'heart'},
+    'text_classification': {'title': 'Text Classification', 'description': 'Categorize text into predefined classes', 'icon': 'folder'},
+    'word_embeddings': {'title': 'Word Embeddings', 'description': 'Convert text to numerical representations', 'icon': 'grid'},
+    'chunking': {'title': 'Chunking & Parsing', 'description': 'Group words into meaningful phrases', 'icon': 'git-branch'}
 }
 
 # Routes
@@ -349,32 +269,56 @@ def process_text():
 
 @app.route('/api/quiz/<module_name>')
 def get_quiz_questions(module_name):
+    """
+    Fetches quiz questions for a given module directly from the PostgreSQL database.
+    """
+    conn = None
     try:
-        from nlp_processor import NLPProcessor
-        nlp_processor = NLPProcessor()
+        # Get the database URL from environment variables
+        db_url = os.environ.get("DATABASE_URL")
+        if not db_url:
+            raise ValueError("DATABASE_URL not found in .env file.")
+
+        # Connect to the PostgreSQL database
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+
+        # Execute the query to get questions for the specified module
+        cur.execute(
+            "SELECT question, options, correct_answer, explanation FROM quiz_question WHERE module_name = %s",
+            (module_name,)
+        )
         
-        # Get questions from the NLP processor
-        questions = nlp_processor.get_quiz_questions(module_name)
+        # Fetch all results
+        questions_from_db = cur.fetchall()
         
-        # Convert 'correct' key to 'correct_answer' for compatibility with frontend
+        # Format the results into a list of dictionaries
         formatted_questions = []
-        for q in questions:
-            formatted_q = q.copy()
-            formatted_q['correct_answer'] = formatted_q.pop('correct')
-            formatted_questions.append(formatted_q)
+        for row in questions_from_db:
+            formatted_questions.append({
+                'question': row[0],
+                'options': row[1], # Options are already in JSON format
+                'correct_answer': row[2],
+                'explanation': row[3]
+            })
         
         return jsonify(formatted_questions)
-    except Exception as e:
-        logging.exception("Error getting quiz questions:")
-        return jsonify([]), 500
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logging.error(f"Error fetching quiz questions from database: {error}")
+        return jsonify({'error': f"Database Error: {str(error)}"}), 500
+    finally:
+        # Ensure the database connection is closed
+        if conn is not None:
+            conn.close()
+
 
 @app.route('/test')
 def test():
     return "Flask app is working! Routes are properly registered."
 
-# Initialize the database
-with app.app_context():
-    db.create_all()
+# --- db.create_all() REMOVED ---
+# Since we are not using SQLAlchemy models, we no longer need to create tables.
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
