@@ -42,6 +42,7 @@ class LabManager {
     setupModule() {
         this.setupOperationOptions();
         this.setupExplanation();
+        this.setupTranslationControlsIfNeeded();
     }
     
     setupOperationOptions() {
@@ -84,6 +85,9 @@ class LabManager {
             ],
             'word_embeddings': [
                 { value: 'tokenize', label: 'Text Tokenization' }
+            ],
+            'machine_translation': [
+                { value: 'translate', label: 'Translate' }
             ]
         };
         
@@ -200,7 +204,17 @@ class LabManager {
                     <li><strong>Popular Models:</strong> Word2Vec, GloVe, and FastText are common algorithms for creating word embeddings.</li>
                 </ul>
                 <p>Embeddings are crucial for deep learning models as they allow neural networks to work with the meaning of words, not just their surface form.</p>
-            `
+            `,
+            'machine_translation': `
+                <h6>Machine Translation (MT)</h6>
+                <p>Machine Translation is the technology that automatically converts text from a <strong>source language</strong> to a <strong>target language</strong>. Think of it like a smart assistant that understands the full <em>meaning and context</em> of a sentence, not just the individual words, and then expresses that same idea in a new language.</p>
+                <ul>
+                    <li><strong>Rule-Based (RBMT):</strong> The earliest approach, using manually written grammar rules and dictionaries. It often produced robotic-sounding translations because it lacked contextual understanding.</li>
+                    <li><strong>Statistical (SMT):</strong> This method learned from massive amounts of human-translated text by finding the most statistically probable phrase-for-phrase translations. It was more fluent but still struggled with complex grammar.</li>
+                    <li><strong>Neural (NMT):</strong> The modern, brain-inspired approach. An 'encoder' network reads the entire source sentence to capture its meaning, and a 'decoder' network generates a new, highly accurate and natural-sounding sentence in the target language. This is the technology behind services like Google Translate today.</li>
+                </ul>
+                <p>While challenges like idioms and cultural nuances still exist, NMT is a cornerstone of modern AI, breaking down language barriers and making global communication and information access possible. 🌍</p>
+`
         };
         
         this.explanationContent.innerHTML = explanations[this.moduleName] || 
@@ -220,12 +234,19 @@ class LabManager {
         this.processBtn.disabled = true;
         
         try {
+            const payload = { text, operation };
+            if (operation === 'translate') {
+                const srcInput = document.getElementById('srcLang');
+                const destInput = document.getElementById('destLang');
+                if (srcInput && destInput) {
+                    payload.src_lang = (srcInput.value || 'auto').trim() || 'auto';
+                    payload.dest_lang = (destInput.value || 'en').trim() || 'en';
+                }
+            }
+
             const response = await makeAPIRequest('/api/process', {
                 method: 'POST',
-                body: JSON.stringify({
-                    text: text,
-                    operation: operation
-                })
+                body: JSON.stringify(payload)
             });
             
             this.currentResults = response;
@@ -234,7 +255,8 @@ class LabManager {
             
         } catch (error) {
             console.error('Processing error:', error);
-            this.displayError('Failed to process text. Please try again.');
+            const msg = (error && error.message) ? `Failed to process text. ${error.message}` : 'Failed to process text. Please try again.';
+            this.displayError(msg);
         } finally {
             this.hideSpinner();
             this.processBtn.disabled = false;
@@ -277,6 +299,9 @@ class LabManager {
                 break;
             case 'chunk':
                 html = this.formatChunkingResults(results);
+                break;
+            case 'translate':
+                html = this.formatTranslationResults(results);
                 break;
             default:
                 html = '<div class="alert alert-info">Results will appear here.</div>';
@@ -510,6 +535,46 @@ class LabManager {
             case 'GPE': case 'LOCATION': return 'location';
             default: return 'other';
         }
+    }
+
+    setupTranslationControlsIfNeeded() {
+        if (this.moduleName !== 'machine_translation') return;
+        const operationSelect = document.getElementById('operationSelect');
+        if (!operationSelect) return;
+
+        // Create inputs for source and target language codes
+        const wrapper = document.createElement('div');
+        wrapper.className = 'row g-2 mb-3';
+        wrapper.innerHTML = `
+            <div class="col-sm-6">
+                <label for="srcLang" class="form-label">Source language code</label>
+                <input id="srcLang" type="text" class="form-control" placeholder="auto" value="auto" />
+                <div class="form-text">Leave as 'auto' to detect automatically.</div>
+            </div>
+            <div class="col-sm-6">
+                <label for="destLang" class="form-label">Target language code</label>
+                <input id="destLang" type="text" class="form-control" placeholder="en" value="en" />
+                <div class="form-text">Examples: en, hi, fr, es, de, ta, te</div>
+            </div>
+        `;
+        operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
+    }
+
+    formatTranslationResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const detected = results.detected_source || 'auto';
+        const target = results.target_language || 'en';
+        const original = results.original_text || '';
+        const translated = results.translated_text || '';
+        return `
+            <h6>Translation</h6>
+            <div class="mb-2"><strong>Detected source:</strong> ${detected}</div>
+            <div class="mb-2"><strong>Target:</strong> ${target}</div>
+            <div class="mb-2"><strong>Original:</strong><br/><div class="p-2 bg-light rounded"><code>${original}</code></div></div>
+            <div class="mb-2"><strong>Translated:</strong><br/><div class="p-2 bg-light rounded"><code>${translated}</code></div></div>
+        `;
     }
     
     displayVisualization(results) {

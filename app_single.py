@@ -214,7 +214,8 @@ LAB_MODULES = {
     'sentiment_analysis': {'title': 'Sentiment Analysis', 'description': 'Determine emotional tone of text', 'icon': 'heart'},
     'text_classification': {'title': 'Text Classification', 'description': 'Categorize text into predefined classes', 'icon': 'folder'},
     'word_embeddings': {'title': 'Word Embeddings', 'description': 'Convert text to numerical representations', 'icon': 'grid'},
-    'chunking': {'title': 'Chunking & Parsing', 'description': 'Group words into meaningful phrases', 'icon': 'git-branch'}
+    'chunking': {'title': 'Chunking & Parsing', 'description': 'Group words into meaningful phrases', 'icon': 'git-branch'},
+    'machine_translation': {'title': 'Machine Translation', 'description': 'Translate text between languages', 'icon': 'globe'}
 }
 
 # Routes
@@ -260,7 +261,16 @@ def process_text():
         if not text or not operation:
             return jsonify({'error': 'Text and operation are required'}), 400
 
-        result = nlp_processor.process(text, operation)
+        if operation == 'translate':
+            src_lang = data.get('src_lang') or 'auto'
+            dest_lang = data.get('dest_lang') or 'en'
+            if isinstance(src_lang, str):
+                src_lang = src_lang.strip() or 'auto'
+            if isinstance(dest_lang, str):
+                dest_lang = dest_lang.strip() or 'en'
+            result = nlp_processor.translate_text(text, src_lang=src_lang, dest_lang=dest_lang)
+        else:
+            result = nlp_processor.process(text, operation)
         return jsonify(result)
 
     except Exception as e:

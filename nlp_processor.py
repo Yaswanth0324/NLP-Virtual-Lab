@@ -11,7 +11,8 @@ import string
 from collections import Counter
 import logging
 import os
-import psycopg2 # Added for database connection
+import psycopg2  # Added for database connection
+
 
 # Download required NLTK data
 # (NLTK download checks remain the same)
@@ -79,6 +80,9 @@ class NLPProcessor:
                 return self.lemmatize_text(text)
             elif operation == 'chunk':
                 return self.chunk_text(text)
+            elif operation == 'translate':
+                # Fallback support if route does not pass src/dest; defaults used
+                return self.translate_text(text, src_lang='auto', dest_lang='en')
             else:
                 return {'error': 'Unknown operation'}
         except Exception as e:
@@ -307,10 +311,35 @@ class NLPProcessor:
                 'chunk_tree': ''
             }
     
+    def translate_text(self, text, src_lang='auto', dest_lang='en'):
+        """Translate text using googletrans.
+        :param text: Text to translate
+        :param src_lang: Source language code (default: 'auto')
+        :param dest_lang: Destination language code (default: 'en')
+        :return: dict with translation result
+        """
+        try:
+            # Import locally to avoid hard dependency at module import time
+            from googletrans import Translator
+            translator = Translator()
+            result = translator.translate(text, src=src_lang or 'auto', dest=dest_lang or 'en')
+            return {
+                'original_text': text,
+                'translated_text': result.text,
+                'detected_source': getattr(result, 'src', src_lang or 'auto'),
+                'target_language': getattr(result, 'dest', dest_lang or 'en')
+            }
+        except Exception as e:
+            logging.error(f"Translation failed: {e}")
+            return {'error': f'Translation failed: {str(e)}'}
+
     def get_quiz_questions(self, module_name):
         """
         Fetches quiz questions for a given module directly from the PostgreSQL database.
         """
+        if psycopg2 is None:
+            logging.error("psycopg2 is not installed; quiz questions cannot be fetched.")
+            return []
         conn = None
         try:
             db_url = os.environ.get("DATABASE_URL")

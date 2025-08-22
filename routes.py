@@ -50,6 +50,11 @@ def register_routes(app, db):
             'title': 'Chunking & Parsing',
             'description': 'Group words into meaningful phrases',
             'icon': 'git-branch'
+        },
+        'machine_translation': {
+            'title': 'Machine Translation',
+            'description': 'Translate text between languages',
+            'icon': 'globe'
         }
     }
     
@@ -87,7 +92,16 @@ def register_routes(app, db):
             return jsonify({'error': 'Text and operation are required'}), 400
         
         try:
-            result = nlp_processor.process(text, operation)
+            if operation == 'translate':
+                src_lang = data.get('src_lang') or 'auto'
+                dest_lang = data.get('dest_lang') or 'en'
+                if isinstance(src_lang, str):
+                    src_lang = src_lang.strip() or 'auto'
+                if isinstance(dest_lang, str):
+                    dest_lang = dest_lang.strip() or 'en'
+                result = nlp_processor.translate_text(text, src_lang=src_lang, dest_lang=dest_lang)
+            else:
+                result = nlp_processor.process(text, operation)
             return jsonify(result)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -193,6 +207,11 @@ LAB_MODULES = {
         'title': 'Chunking & Parsing',
         'description': 'Group words into meaningful phrases',
         'icon': 'git-branch'
+    },
+    'machine_translation': {
+        'title': 'Machine Translation',
+        'description': 'Translate text between languages',
+        'icon': 'globe'
     }
 }
 
@@ -230,7 +249,16 @@ def process_text():
         return jsonify({'error': 'Text and operation are required'}), 400
     
     try:
-        result = nlp_processor.process(text, operation)
+        if operation == 'translate':
+            src_lang = data.get('src_lang') or 'auto'
+            dest_lang = data.get('dest_lang') or 'en'
+            if isinstance(src_lang, str):
+                src_lang = src_lang.strip() or 'auto'
+            if isinstance(dest_lang, str):
+                dest_lang = dest_lang.strip() or 'en'
+            result = nlp_processor.translate_text(text, src_lang=src_lang, dest_lang=dest_lang)
+        else:
+            result = nlp_processor.process(text, operation)
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
