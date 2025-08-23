@@ -1,3 +1,12 @@
+import logging
+import os
+import re
+import string
+import random
+import json
+from collections import Counter
+
+# --- Core NLP Libraries ---
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
@@ -6,50 +15,89 @@ from nltk.tag import pos_tag
 from nltk.chunk import ne_chunk
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.util import ngrams
-import re
-import string
-from collections import Counter
-import logging
-import os
-import psycopg2  # Added for database connection
 
+# --- For Machine Learning and NLP Models ---
+import numpy as np
+import psycopg2 
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from transformers import pipeline
 
-# Download required NLTK data
-# (NLTK download checks remain the same)
+# --- Ensure required NLTK data is available ---
+def _ensure_nltk_data():
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt')
+
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords')
+
+    try:
+        nltk.data.find('taggers/averaged_perceptron_tagger')
+    except LookupError:
+        try:
+            nltk.download('averaged_perceptron_tagger')
+        except Exception:
+            pass
+    try:
+        nltk.data.find('taggers/averaged_perceptron_tagger_eng')
+    except LookupError:
+        try:
+            nltk.download('averaged_perceptron_tagger_eng')
+        except Exception:
+            pass
+
+    try:
+        nltk.data.find('chunkers/maxent_ne_chunker')
+    except LookupError:
+        nltk.download('maxent_ne_chunker')
+
+    try:
+        nltk.data.find('corpora/words')
+    except LookupError:
+        nltk.download('words')
+
+    try:
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        nltk.download('wordnet')
+
+    try:
+        nltk.data.find('sentiment/vader_lexicon')
+    except LookupError:
+        nltk.download('vader_lexicon')
+
+# Additional compatibility downloads for newer NLTK versions
+# punkt_tab (required by newer tokenizers)
 try:
-    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('tokenizers/punkt_tab')
 except LookupError:
-    nltk.download('punkt')
+    try:
+        nltk.download('punkt_tab')
+    except Exception:
+        pass
 
+# New tagger package name in recent NLTK releases
 try:
-    nltk.data.find('corpora/stopwords')
+    nltk.data.find('taggers/averaged_perceptron_tagger_eng')
 except LookupError:
-    nltk.download('stopwords')
+    try:
+        nltk.download('averaged_perceptron_tagger_eng')
+    except Exception:
+        pass
 
+# WordNet dependency for lemmatization in some environments
 try:
-    nltk.data.find('taggers/averaged_perceptron_tagger')
+    nltk.data.find('corpora/omw-1.4')
 except LookupError:
-    nltk.download('averaged_perceptron_tagger')
-
-try:
-    nltk.data.find('chunkers/maxent_ne_chunker')
-except LookupError:
-    nltk.download('maxent_ne_chunker')
-
-try:
-    nltk.data.find('corpora/words')
-except LookupError:
-    nltk.download('words')
-
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-
-try:
-    nltk.data.find('sentiment/vader_lexicon')
-except LookupError:
-    nltk.download('vader_lexicon')
+    try:
+        nltk.download('omw-1.4')
+    except Exception:
+        pass
 
 
 class NLPProcessor:
@@ -59,6 +107,7 @@ class NLPProcessor:
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.stop_words = set(stopwords.words('english'))
         self._summarizer = None
+        self._text_generator = None
         
     def process(self, text, operation):
         """Process text based on the specified operation"""
@@ -82,11 +131,27 @@ class NLPProcessor:
             elif operation == 'chunk':
                 return self.chunk_text(text)
             elif operation == 'summarize':
-                # Default lengths if not provided via /summarize route
                 return self.summarize_text(text, max_length=130, min_length=30)
-            elif operation == 'translate':
-                # Fallback support if route does not pass src/dest; defaults used
-                return self.translate_text(text, src_lang='auto', dest_lang='en')
+            elif operation == 'generate_text':
+                return self.generate_text(text, max_new_tokens=50)
+            elif operation == 'translate_en_hi':
+                return self.translate_text(text, 'en_hi')
+            elif operation == 'translate_hi_en':
+                return self.translate_text(text, 'hi_en')
+            elif operation == 'translate_en_te':
+                return self.translate_text(text, 'en_te')
+            elif operation == 'translate_hi_te':
+                return self.translate_text(text, 'hi_te')
+            elif operation == 'translate_te_en':
+                return self.translate_text(text, 'te_en')
+            elif operation == 'translate_te_hi':
+                return self.translate_text(text, 'te_hi')
+            elif operation == 'qa':
+                return self.answer_question(text)
+            elif operation == 'topic_model':
+                return self.topic_modeling(text)
+            elif operation == 'attention_demo':
+                return self.attention_demo(text)
             else:
                 return {'error': 'Unknown operation'}
         except Exception as e:
@@ -94,30 +159,23 @@ class NLPProcessor:
             return {'error': str(e)}
     
     def tokenize(self, text):
-        """Tokenize text into words and sentences"""
         words = word_tokenize(text)
         sentences = sent_tokenize(text)
-        
         return {
             'words': words,
             'sentences': sentences,
             'word_count': len(words),
             'sentence_count': len(sentences),
-            'visualization': {
-                'type': 'tokens',
-                'data': words
-            }
+            'visualization': {'type': 'tokens', 'data': words}
         }
     
     def preprocess(self, text):
-        """Complete preprocessing pipeline"""
         original = text
         lowercased = text.lower()
         no_punct = lowercased.translate(str.maketrans('', '', string.punctuation))
         tokens = word_tokenize(no_punct)
         filtered_tokens = [word for word in tokens if word not in self.stop_words]
         stemmed = [self.stemmer.stem(word) for word in filtered_tokens]
-        
         return {
             'original': original,
             'lowercased': lowercased,
@@ -136,39 +194,27 @@ class NLPProcessor:
         }
     
     def pos_tag(self, text):
-        """Part-of-speech tagging"""
         tokens = word_tokenize(text)
         tagged = pos_tag(tokens)
-        
         pos_groups = {}
         for word, pos in tagged:
-            if pos not in pos_groups:
-                pos_groups[pos] = []
-            pos_groups[pos].append(word)
-        
+            pos_groups.setdefault(pos, []).append(word)
         return {
             'tagged': tagged,
             'pos_groups': pos_groups,
             'total_words': len(tokens),
             'unique_pos': len(pos_groups),
-            'visualization': {
-                'type': 'pos_chart',
-                'data': pos_groups
-            }
+            'visualization': {'type': 'pos_chart', 'data': pos_groups}
         }
     
     def generate_ngrams(self, text, n=2):
-        """Generate n-grams from text"""
         tokens = word_tokenize(text.lower())
-        
         unigrams = list(ngrams(tokens, 1))
         bigrams = list(ngrams(tokens, 2))
         trigrams = list(ngrams(tokens, 3))
-        
         unigram_freq = Counter(unigrams)
         bigram_freq = Counter(bigrams)
         trigram_freq = Counter(trigrams)
-        
         return {
             'unigrams': {
                 'grams': [' '.join(gram) for gram in unigrams],
@@ -193,11 +239,9 @@ class NLPProcessor:
         }
     
     def named_entity_recognition(self, text):
-        """Extract named entities"""
         tokens = word_tokenize(text)
         tagged = pos_tag(tokens)
         entities = ne_chunk(tagged)
-        
         named_entities = []
         for chunk in entities:
             if hasattr(chunk, 'label'):
@@ -207,36 +251,25 @@ class NLPProcessor:
                     'label': chunk.label(),
                     'words': entity_words
                 })
-        
         entity_groups = {}
         for entity in named_entities:
-            label = entity['label']
-            if label not in entity_groups:
-                entity_groups[label] = []
-            entity_groups[label].append(entity['entity'])
-        
+            entity_groups.setdefault(entity['label'], []).append(entity['entity'])
         return {
             'entities': named_entities,
             'entity_groups': entity_groups,
             'total_entities': len(named_entities),
             'entity_types': list(entity_groups.keys()),
-            'visualization': {
-                'type': 'entity_chart',
-                'data': entity_groups
-            }
+            'visualization': {'type': 'entity_chart', 'data': entity_groups}
         }
     
     def sentiment_analysis(self, text):
-        """Analyze sentiment using VADER"""
         scores = self.sentiment_analyzer.polarity_scores(text)
-        
         if scores['compound'] >= 0.05:
             overall = 'Positive'
         elif scores['compound'] <= -0.05:
             overall = 'Negative'
         else:
             overall = 'Neutral'
-        
         return {
             'scores': scores,
             'overall_sentiment': overall,
@@ -257,10 +290,8 @@ class NLPProcessor:
         }
     
     def stem_text(self, text):
-        """Stem words in text"""
         tokens = word_tokenize(text)
         stemmed = [(token, self.stemmer.stem(token)) for token in tokens]
-        
         return {
             'original_tokens': tokens,
             'stemmed_pairs': stemmed,
@@ -268,10 +299,8 @@ class NLPProcessor:
         }
     
     def lemmatize_text(self, text):
-        """Lemmatize words in text"""
         tokens = word_tokenize(text)
         lemmatized = [(token, self.lemmatizer.lemmatize(token)) for token in tokens]
-        
         return {
             'original_tokens': tokens,
             'lemmatized_pairs': lemmatized,
@@ -279,33 +308,25 @@ class NLPProcessor:
         }
     
     def chunk_text(self, text):
-        """Perform noun phrase chunking"""
         tokens = word_tokenize(text)
         tagged = pos_tag(tokens)
-        
         grammar = r"""
             NP: {<DT|PP\$>?<JJ>*<NN>}
                 {<NNP>+}
         """
-        
         try:
             cp = nltk.RegexpParser(grammar)
             chunks = cp.parse(tagged)
-            
             noun_phrases = []
             for chunk in chunks:
                 if hasattr(chunk, 'label') and chunk.label() == 'NP':
                     phrase = ' '.join([word for word, pos in chunk])
                     noun_phrases.append(phrase)
-            
             return {
                 'tagged_tokens': tagged,
                 'noun_phrases': noun_phrases,
                 'chunk_tree': str(chunks),
-                'visualization': {
-                    'type': 'chunk_tree',
-                    'data': str(chunks)
-                }
+                'visualization': {'type': 'chunk_tree', 'data': str(chunks)}
             }
         except Exception as e:
             return {
@@ -337,28 +358,16 @@ class NLPProcessor:
             logging.error(f"Translation failed: {e}")
             return {'error': f'Translation failed: {str(e)}'}
 
-    # Text Summarization (Transformers)
     def _get_summarizer(self):
-        if getattr(self, '_summarizer', None) is None:
+        if self._summarizer is None:
             try:
-                # Prefer PyTorch backend if available
-                try:
-                    import torch  # noqa: F401
-                    from transformers import pipeline
-                    self._summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", framework="pt")
-                except Exception:
-                    from transformers import pipeline
-                    self._summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+                self._summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", framework="pt")
             except Exception as e:
                 logging.error(f"Failed to initialize summarizer: {e}")
                 self._summarizer = None
         return self._summarizer
 
     def summarize_text(self, text, max_length=130, min_length=30):
-        """
-        Generate a concise summary for the given text.
-        Falls back with an error dict if transformers or model is unavailable.
-        """
         if not text or not text.strip():
             return {'error': 'No text provided.'}
         try:
@@ -372,13 +381,41 @@ class NLPProcessor:
             logging.error(f"Summarization failed: {e}")
             return {'error': f'Summarization failed: {str(e)}'}
 
+    def _get_text_generator(self):
+        if self._text_generator is None:
+            try:
+                self._text_generator = pipeline("text-generation", model="gpt2", framework="pt")
+            except Exception as e:
+                logging.error(f"Failed to initialize text generator: {e}")
+                self._text_generator = None
+        return self._text_generator
+
+    def generate_text(self, prompt, max_new_tokens=50, num_return_sequences=1,
+                      do_sample=True, top_k=50, top_p=0.95,
+                      temperature=0.9, repetition_penalty=1.2):
+        if not prompt or not prompt.strip():
+            return {'error': 'No prompt provided.'}
+        try:
+            generator = self._get_text_generator()
+            if generator is None:
+                return {'error': 'Text generator not available. Please install transformers and a supported backend (torch or tf-keras).'}
+            results = generator(
+                prompt,
+                max_new_tokens=max_new_tokens,
+                num_return_sequences=num_return_sequences,
+                do_sample=do_sample,
+                top_k=top_k,
+                top_p=top_p,
+                temperature=temperature,
+                repetition_penalty=repetition_penalty
+            )
+            generated_texts = [r.get('generated_text', '') for r in results]
+            return {'generated': generated_texts}
+        except Exception as e:
+            logging.error(f"Text generation failed: {e}")
+            return {'error': f'Text generation failed: {str(e)}'}
+
     def get_quiz_questions(self, module_name):
-        """
-        Fetches quiz questions for a given module directly from the PostgreSQL database.
-        """
-        if psycopg2 is None:
-            logging.error("psycopg2 is not installed; quiz questions cannot be fetched.")
-            return []
         conn = None
         try:
             db_url = os.environ.get("DATABASE_URL")
@@ -397,10 +434,16 @@ class NLPProcessor:
             
             formatted_questions = []
             for row in questions_from_db:
+                try:
+                    options_list = json.loads(row[1])
+                except (json.JSONDecodeError, TypeError) as e:
+                    logging.error(f"Failed to decode options for question '{row[0]}': {e}. Raw data: {row[1]}")
+                    options_list = []
+                
                 formatted_questions.append({
                     'question': row[0],
-                    'options': row[1],
-                    'correct': row[2], # Changed back to 'correct' to match original structure
+                    'options': options_list,
+                    'correct_answer': row[2],
                     'explanation': row[3]
                 })
             
@@ -408,27 +451,24 @@ class NLPProcessor:
 
         except (Exception, psycopg2.DatabaseError) as error:
             logging.error(f"Error fetching quiz questions from database: {error}")
-            return [] # Return an empty list on error
+            return []
         finally:
             if conn is not None:
                 conn.close()
     
     def calculate_quiz_score(self, module_name, answers):
-        """Calculate quiz score based on answers"""
         questions = self.get_quiz_questions(module_name)
         if not questions:
             return 0
         
         correct = 0
         for i, answer in enumerate(answers):
-            # Ensure the answer is an integer for comparison
             try:
                 user_answer = int(answer)
-                if i < len(questions) and user_answer == questions[i]['correct']:
+                if i < len(questions) and user_answer == questions[i]['correct_answer']:
                     correct += 1
             except (ValueError, TypeError):
                 logging.warning(f"Could not convert answer '{answer}' to int.")
-                continue # Skip if the answer is not a valid number
+                continue
         
         return int((correct / len(questions)) * 100)
-

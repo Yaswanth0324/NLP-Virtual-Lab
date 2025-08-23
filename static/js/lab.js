@@ -44,6 +44,7 @@ class LabManager {
         this.setupExplanation();
         this.setupTranslationControlsIfNeeded();
         this.setupSummarizationControlsIfNeeded();
+        this.setupTextGenerationControlsIfNeeded();
     }
     
     setupOperationOptions() {
@@ -92,6 +93,9 @@ class LabManager {
             ],
             'text_summarization': [
                 { value: 'summarize', label: 'Summarize Text' }
+            ],
+            'text_generation': [
+                { value: 'generate', label: 'Generate Text' }
             ]
         };
         
@@ -228,6 +232,17 @@ class LabManager {
                     <li><strong>Length Controls:</strong> Use minimum and maximum length to guide output size.</li>
                 </ul>
                 <p>Use this lab to explore how summary length affects the information retained.</p>
+            `,
+            'text_generation': `
+                <h6>Text Generation</h6>
+                <p>Text generation creates new text by predicting one token at a time given a <em>prompt</em>. The model looks at the words you provide and continues with the most likely next words, sampling from a probability distribution.</p>
+                <ul>
+                    <li><strong>How it works:</strong> The model scores many possible next tokens and samples one based on settings like <em>top-k</em> (keep the k best options) and <em>top-p</em> (keep the smallest set of tokens whose probabilities add up to p).</li>
+                    <li><strong>Controlling output:</strong> You can influence length (maximum new tokens), randomness (temperature/top-k/top-p), and how many alternatives to return (number of sequences).</li>
+                    <li><strong>Prompting tips:</strong> State the task clearly, include brief constraints (style, length, format), and provide a small example if needed. Clear prompts = better generations.</li>
+                    <li><strong>Limitations:</strong> Models can produce repetitive, biased, or incorrect text (“hallucinations”). Always review outputs, especially for factual tasks.</li>
+                </ul>
+                <p>Try different prompts and parameters to see how the style, creativity, and coherence change.</p>
             `
         };
         
@@ -265,6 +280,13 @@ class LabManager {
                 const max_length = maxLenInput ? parseInt(maxLenInput.value, 10) || 130 : 130;
                 endpoint = '/summarize';
                 payload = { text, min_length, max_length };
+            } else if (operation === 'generate' || this.moduleName === 'text_generation') {
+                const genMaxLenInput = document.getElementById('genMaxLen');
+                const genNumSeqInput = document.getElementById('genNumSequences');
+                const max_length = genMaxLenInput ? parseInt(genMaxLenInput.value, 10) || 50 : 50;
+                const num_return_sequences = genNumSeqInput ? parseInt(genNumSeqInput.value, 10) || 1 : 1;
+                endpoint = '/generate';
+                payload = { prompt: text, max_length, num_return_sequences };
             }
 
             const response = await makeAPIRequest(endpoint, {
@@ -328,6 +350,9 @@ class LabManager {
                 break;
             case 'summarize':
                 html = this.formatSummarizationResults(results);
+                break;
+            case 'generate':
+                html = this.formatTextGenerationResults(results);
                 break;
             default:
                 html = '<div class="alert alert-info">Results will appear here.</div>';
@@ -607,6 +632,26 @@ class LabManager {
         operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
     }
 
+    setupTextGenerationControlsIfNeeded() {
+        if (this.moduleName !== 'text_generation') return;
+        const operationSelect = document.getElementById('operationSelect');
+        if (!operationSelect) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'row g-2 mb-3';
+        wrapper.innerHTML = `
+            <div class="col-sm-6">
+                <label for="genMaxLen" class="form-label">Maximum length</label>
+                <input id="genMaxLen" type="number" class="form-control" value="50" min="10" max="200" />
+            </div>
+            <div class="col-sm-6">
+                <label for="genNumSequences" class="form-label">Number of sequences</label>
+                <input id="genNumSequences" type="number" class="form-control" value="1" min="1" max="5" />
+            </div>
+        `;
+        operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
+    }
+
     formatTranslationResults(results) {
         if (results.error) {
             return `<div class="alert alert-danger">${results.error}</div>`;
@@ -635,6 +680,26 @@ class LabManager {
             <h6>Summary</h6>
             <div class="p-3 bg-light rounded mb-3"><code>${summary}</code></div>
             ${compression ? `<div class="text-muted">Compression: ${compression}% of original length</div>` : ''}
+        `;
+    }
+
+    formatTextGenerationResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const outputs = results.generated || [];
+        if (!Array.isArray(outputs) || outputs.length === 0) {
+            return '<div class="alert alert-info">No text generated.</div>';
+        }
+        const items = outputs.map((t, idx) => `
+            <div class="mb-3 p-2 bg-light rounded">
+                <div class="small text-muted">Output ${idx + 1}</div>
+                <code>${t}</code>
+            </div>
+        `).join('');
+        return `
+            <h6>Generated Text</h6>
+            ${items}
         `;
     }
     

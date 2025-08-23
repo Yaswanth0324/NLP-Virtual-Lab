@@ -51,6 +51,36 @@ def get_summarizer():
             _summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
     return _summarizer
 
+# Initialize text-generation pipeline lazily and prefer PyTorch backend
+
+_text_generator = None
+
+def get_text_generator():
+    global _text_generator
+    if _text_generator is None:
+        try:
+            # Import pipeline from the transformers library
+            from transformers import pipeline
+
+            # Attempt to use the 'pt' framework (PyTorch)
+            _text_generator = pipeline("text-generation", model="gpt2", framework="pt")
+            logging.info("Text generation pipeline loaded successfully with PyTorch.")
+        except ImportError:
+            # Fallback if PyTorch is not installed
+            logging.warning("PyTorch not found. Attempting to load text-generation pipeline without specifying framework.")
+            try:
+                from transformers import pipeline
+                _text_generator = pipeline("text-generation", model="gpt2")
+                logging.info("Text generation pipeline loaded successfully without a specified framework.")
+            except Exception as e:
+                logging.error(f"Failed to load text generation pipeline: {e}")
+                _text_generator = None # Ensure it remains None on failure
+
+    if _text_generator is None:
+        raise RuntimeError("Failed to initialize text generation pipeline. Please check your transformers and PyTorch installation.")
+
+    return _text_generator
+
 # --- Database configuration is now handled directly in the route ---
 
 
@@ -234,6 +264,31 @@ def summarize():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/generate', methods=['POST'])
+def generate():
+    data = request.get_json()
+    prompt = data.get('prompt', '')
+    max_length = data.get('max_length', 50)
+    num_return_sequences = data.get('num_return_sequences', 1)
+
+    if not prompt:
+        return jsonify({'error': 'No prompt provided.'}), 400
+
+    try:
+        generator = get_text_generator()
+        results = generator(
+            prompt,
+            max_new_tokens=50,
+            num_return_sequences=num_return_sequences,
+            do_sample=True,
+            top_k=50,
+            top_p=0.95
+        )
+        generated_texts = [r.get('generated_text', '') for r in results]
+        return jsonify({'generated': generated_texts})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # --- MODELS REMOVED ---
 # The User, UserProgress, and QuizQuestion SQLAlchemy models have been removed.
@@ -251,7 +306,8 @@ LAB_MODULES = {
     'word_embeddings': {'title': 'Word Embeddings', 'description': 'Convert text to numerical representations', 'icon': 'grid'},
     'chunking': {'title': 'Chunking & Parsing', 'description': 'Group words into meaningful phrases', 'icon': 'git-branch'},
     'machine_translation': {'title': 'Machine Translation', 'description': 'Translate text between languages', 'icon': 'globe'},
-    'text_summarization': {'title': 'Text Summarization', 'description': 'Generate concise summaries of long text', 'icon': 'file-text'}
+    'text_summarization': {'title': 'Text Summarization', 'description': 'Generate concise summaries of long text', 'icon': 'file-text'},
+    'text_generation': {'title': 'Text Generation', 'description': 'Generate text continuations from prompts', 'icon': 'type'}
 }
 
 # Routes

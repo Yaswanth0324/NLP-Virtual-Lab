@@ -91,6 +91,23 @@
                                 data-text="Researchers analyzed ten thousand customer reviews from multiple regions to understand satisfaction drivers, recurring complaints, and language differences. Using topic modeling and sentiment analysis, they identified themes such as documentation clarity, onboarding speed, product reliability, and response time from support teams. Positive ratings clustered around clear setup guides, consistent updates, and proactive communication before issues escalated. Negative feedback frequently cited confusing error messages, slow account recovery, and limited self service tools. The authors recommend investing in searchable knowledge bases, tutorial videos, and in product guidance that adapts to user behavior. They also propose service level targets, transparent status pages, and structured feedback channels. According to follow up experiments, small improvements in guidance and responsiveness produced meaningful gains in retention and word of mouth.">
                                 Research Summary
                             </button>
+                            {% elif module_name == 'text_generation' %}
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Once upon a time in a small village, a young boy discovered">
+                                Story Prompt
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Artificial Intelligence will change the future of education because">
+                                Technology Prompt
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Human: Hello there! \nAI:">
+                                Dialogue Prompt
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Write a Python function to check if a number is prime:">
+                                Code Prompt
+                            </button>
                             {% else %}
                             <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
                                 data-text="The quick brown fox jumps over the lazy dog.">
