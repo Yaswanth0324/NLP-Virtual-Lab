@@ -401,3 +401,17 @@
         transform: translateX(0);
     }
 }
+
+/* Utility: Round images */
+.img-round,
+img.round,
+.avatar {
+    border-radius: 50%;
+    object-fit: cover; /* ensure image fills the circle without distortion */
+    aspect-ratio: 1 / 1; /* keep it perfectly square */
+}
+
+/* Optional avatar sizes */
+.avatar-sm { width: 32px; height: 32px; }
+.avatar-md { width: 64px; height: 64px; }
+.avatar-lg { width: 96px; height: 96px; }

@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime
 import json
@@ -314,6 +314,15 @@ LAB_MODULES = {
 @app.route('/')
 def index():
     return render_template('index.html', modules=LAB_MODULES)
+
+# Favicon routes
+@app.route('/favicon.png')
+def favicon_png():
+    return send_from_directory(os.path.join(app.root_path, 'images'), 'nlp-logo.png', mimetype='image/png')
+
+@app.route('/favicon.ico')
+def favicon_ico():
+    return send_from_directory(os.path.join(app.root_path, 'images'), 'nlp-logo.png', mimetype='image/png')
 
 @app.route('/readme')
 def readme():
