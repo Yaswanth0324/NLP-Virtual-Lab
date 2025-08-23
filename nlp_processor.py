@@ -58,6 +58,7 @@ class NLPProcessor:
         self.lemmatizer = WordNetLemmatizer()
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.stop_words = set(stopwords.words('english'))
+        self._summarizer = None
         
     def process(self, text, operation):
         """Process text based on the specified operation"""
@@ -80,6 +81,9 @@ class NLPProcessor:
                 return self.lemmatize_text(text)
             elif operation == 'chunk':
                 return self.chunk_text(text)
+            elif operation == 'summarize':
+                # Default lengths if not provided via /summarize route
+                return self.summarize_text(text, max_length=130, min_length=30)
             elif operation == 'translate':
                 # Fallback support if route does not pass src/dest; defaults used
                 return self.translate_text(text, src_lang='auto', dest_lang='en')
@@ -332,6 +336,41 @@ class NLPProcessor:
         except Exception as e:
             logging.error(f"Translation failed: {e}")
             return {'error': f'Translation failed: {str(e)}'}
+
+    # Text Summarization (Transformers)
+    def _get_summarizer(self):
+        if getattr(self, '_summarizer', None) is None:
+            try:
+                # Prefer PyTorch backend if available
+                try:
+                    import torch  # noqa: F401
+                    from transformers import pipeline
+                    self._summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", framework="pt")
+                except Exception:
+                    from transformers import pipeline
+                    self._summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+            except Exception as e:
+                logging.error(f"Failed to initialize summarizer: {e}")
+                self._summarizer = None
+        return self._summarizer
+
+    def summarize_text(self, text, max_length=130, min_length=30):
+        """
+        Generate a concise summary for the given text.
+        Falls back with an error dict if transformers or model is unavailable.
+        """
+        if not text or not text.strip():
+            return {'error': 'No text provided.'}
+        try:
+            summarizer = self._get_summarizer()
+            if summarizer is None:
+                return {'error': 'Summarizer not available. Please install transformers and a supported backend (torch or tf-keras).'}
+            result = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
+            summary = result[0]['summary_text']
+            return {'summary': summary}
+        except Exception as e:
+            logging.error(f"Summarization failed: {e}")
+            return {'error': f'Summarization failed: {str(e)}'}
 
     def get_quiz_questions(self, module_name):
         """

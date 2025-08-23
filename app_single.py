@@ -5,6 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime
 import json
 import random
+from transformers import pipeline
 
 # --- New Imports for .env file and DB connection ---
 # Make sure to install the required libraries:
@@ -35,6 +36,20 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Initialize summarization pipeline lazily and prefer PyTorch backend
+_summarizer = None
+
+def get_summarizer():
+    global _summarizer
+    if _summarizer is None:
+        try:
+            import torch  # Ensure PyTorch is available
+            _summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", framework="pt")
+        except Exception:
+            # Fallback to default initialization (may require TensorFlow with tf-keras)
+            _summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+    return _summarizer
 
 # --- Database configuration is now handled directly in the route ---
 
@@ -199,6 +214,26 @@ def chatbot_api():
 
 # --- End of Updated Chatbot Code ---
 
+@app.route('/summarize', methods=['POST'])
+def summarize():
+    data = request.get_json()
+    # Extract input data
+    text = data.get('text', '')
+    max_length = data.get('max_length', 130)
+    min_length = data.get('min_length', 30)
+
+    if not text.strip():
+        return jsonify({'error': 'No text provided.'}), 400
+
+    try:
+        # Run summarization
+        summarizer = get_summarizer()
+        result = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
+        summary = result[0]['summary_text']
+        return jsonify({'summary': summary})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # --- MODELS REMOVED ---
 # The User, UserProgress, and QuizQuestion SQLAlchemy models have been removed.
@@ -215,7 +250,8 @@ LAB_MODULES = {
     'text_classification': {'title': 'Text Classification', 'description': 'Categorize text into predefined classes', 'icon': 'folder'},
     'word_embeddings': {'title': 'Word Embeddings', 'description': 'Convert text to numerical representations', 'icon': 'grid'},
     'chunking': {'title': 'Chunking & Parsing', 'description': 'Group words into meaningful phrases', 'icon': 'git-branch'},
-    'machine_translation': {'title': 'Machine Translation', 'description': 'Translate text between languages', 'icon': 'globe'}
+    'machine_translation': {'title': 'Machine Translation', 'description': 'Translate text between languages', 'icon': 'globe'},
+    'text_summarization': {'title': 'Text Summarization', 'description': 'Generate concise summaries of long text', 'icon': 'file-text'}
 }
 
 # Routes

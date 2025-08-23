@@ -74,6 +74,24 @@
                     </div>
                     <div class="card-body">
                         <div class="example-texts">
+                            {% if module_name == 'text_summarization' %}
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Artificial intelligence continues to expand across industries, with generative models assisting writers, designers, and programmers while classical systems optimize logistics and detect anomalies. Over the last few years, research has focused on aligning large models with human values, improving efficiency through quantization and distillation, and reducing hallucinations using retrieval techniques. Hospitals pilot clinical summarization tools to support physicians, while schools explore adaptive tutoring with strict privacy protections. Regulators publish risk based frameworks, encouraging transparent evaluations, dataset documentation, and accessible red teaming reports. Startups ship lightweight on device models that protect data and cut latency, and cloud providers offer managed pipelines for training and deployment. Despite the momentum, experts stress responsible use, careful measurement, and inclusive governance so the benefits reach small businesses, students, and communities worldwide.">
+                                Tech News
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Regular physical activity supports the heart, lungs, and metabolism by strengthening muscles, improving circulation, and balancing blood sugar. Health guidelines recommend at least one hundred fifty minutes of moderate aerobic exercise each week, plus two sessions of strength training that target major muscle groups. Brisk walking, cycling, swimming, dancing, and climbing stairs are effective, low cost options that fit busy schedules. Short movement breaks during long study or work periods reduce stiffness and boost focus. Adequate hydration, fiber rich meals, and consistent sleep help recovery and performance. Beginners should start slowly, warm up, and increase intensity over several weeks to avoid injury. People with medical conditions can consult a clinician to tailor activities. The most important habit is choosing enjoyable routines that you can maintain, share with friends, and celebrate over time.">
+                                Health Article
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="In nineteen sixty nine the Apollo eleven mission carried astronauts Neil Armstrong, Buzz Aldrin, and Michael Collins to the Moon after years of engineering effort. The spacecraft consisted of the command module Columbia and the lunar module Eagle, launched atop a Saturn five rocket from Florida. After entering lunar orbit, Armstrong and Aldrin descended to the surface, landed at the Sea of Tranquility, and conducted experiments, photography, and sample collection. Millions watched televised images as Armstrong stepped onto the surface and described the moment as a small step for a man and a giant leap for mankind. The crew returned safely to Earth with precious rocks and data that transformed planetary science, inspired new generations of engineers, and laid a foundation for ongoing exploration programs.">
+                                History Article
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Researchers analyzed ten thousand customer reviews from multiple regions to understand satisfaction drivers, recurring complaints, and language differences. Using topic modeling and sentiment analysis, they identified themes such as documentation clarity, onboarding speed, product reliability, and response time from support teams. Positive ratings clustered around clear setup guides, consistent updates, and proactive communication before issues escalated. Negative feedback frequently cited confusing error messages, slow account recovery, and limited self service tools. The authors recommend investing in searchable knowledge bases, tutorial videos, and in product guidance that adapts to user behavior. They also propose service level targets, transparent status pages, and structured feedback channels. According to follow up experiments, small improvements in guidance and responsiveness produced meaningful gains in retention and word of mouth.">
+                                Research Summary
+                            </button>
+                            {% else %}
                             <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
                                 data-text="The quick brown fox jumps over the lazy dog.">
                                 Simple Sentence
@@ -90,6 +108,7 @@
                                 data-text="This is terrible. I hate it and want my money back. Worst experience ever!">
                                 Negative Sentiment
                             </button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

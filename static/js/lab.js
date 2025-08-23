@@ -43,6 +43,7 @@ class LabManager {
         this.setupOperationOptions();
         this.setupExplanation();
         this.setupTranslationControlsIfNeeded();
+        this.setupSummarizationControlsIfNeeded();
     }
     
     setupOperationOptions() {
@@ -88,6 +89,9 @@ class LabManager {
             ],
             'machine_translation': [
                 { value: 'translate', label: 'Translate' }
+            ],
+            'text_summarization': [
+                { value: 'summarize', label: 'Summarize Text' }
             ]
         };
         
@@ -214,7 +218,17 @@ class LabManager {
                     <li><strong>Neural (NMT):</strong> The modern, brain-inspired approach. An 'encoder' network reads the entire source sentence to capture its meaning, and a 'decoder' network generates a new, highly accurate and natural-sounding sentence in the target language. This is the technology behind services like Google Translate today.</li>
                 </ul>
                 <p>While challenges like idioms and cultural nuances still exist, NMT is a cornerstone of modern AI, breaking down language barriers and making global communication and information access possible. 🌍</p>
-`
+`,
+            'text_summarization': `
+                <h6>Text Summarization</h6>
+                <p>Text summarization condenses long passages into concise summaries while preserving the key ideas. Modern approaches use transformer models (e.g., BART, T5) trained to generate high-quality abstractive summaries.</p>
+                <ul>
+                    <li><strong>Abstractive:</strong> Generates new sentences to paraphrase the source.</li>
+                    <li><strong>Extractive:</strong> Selects important sentences from the source text.</li>
+                    <li><strong>Length Controls:</strong> Use minimum and maximum length to guide output size.</li>
+                </ul>
+                <p>Use this lab to explore how summary length affects the information retained.</p>
+            `
         };
         
         this.explanationContent.innerHTML = explanations[this.moduleName] || 
@@ -234,7 +248,9 @@ class LabManager {
         this.processBtn.disabled = true;
         
         try {
-            const payload = { text, operation };
+            let payload = { text, operation };
+            let endpoint = '/api/process';
+
             if (operation === 'translate') {
                 const srcInput = document.getElementById('srcLang');
                 const destInput = document.getElementById('destLang');
@@ -242,9 +258,16 @@ class LabManager {
                     payload.src_lang = (srcInput.value || 'auto').trim() || 'auto';
                     payload.dest_lang = (destInput.value || 'en').trim() || 'en';
                 }
+            } else if (operation === 'summarize' || this.moduleName === 'text_summarization') {
+                const minLenInput = document.getElementById('minLen');
+                const maxLenInput = document.getElementById('maxLen');
+                const min_length = minLenInput ? parseInt(minLenInput.value, 10) || 30 : 30;
+                const max_length = maxLenInput ? parseInt(maxLenInput.value, 10) || 130 : 130;
+                endpoint = '/summarize';
+                payload = { text, min_length, max_length };
             }
 
-            const response = await makeAPIRequest('/api/process', {
+            const response = await makeAPIRequest(endpoint, {
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
@@ -302,6 +325,9 @@ class LabManager {
                 break;
             case 'translate':
                 html = this.formatTranslationResults(results);
+                break;
+            case 'summarize':
+                html = this.formatSummarizationResults(results);
                 break;
             default:
                 html = '<div class="alert alert-info">Results will appear here.</div>';
@@ -560,6 +586,27 @@ class LabManager {
         operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
     }
 
+    setupSummarizationControlsIfNeeded() {
+        if (this.moduleName !== 'text_summarization') return;
+        const operationSelect = document.getElementById('operationSelect');
+        if (!operationSelect) return;
+
+        // Create inputs for min/max summary length
+        const wrapper = document.createElement('div');
+        wrapper.className = 'row g-2 mb-3';
+        wrapper.innerHTML = `
+            <div class="col-sm-6">
+                <label for="minLen" class="form-label">Minimum summary length</label>
+                <input id="minLen" type="number" class="form-control" value="30" min="10" max="300" />
+            </div>
+            <div class="col-sm-6">
+                <label for="maxLen" class="form-label">Maximum summary length</label>
+                <input id="maxLen" type="number" class="form-control" value="130" min="20" max="500" />
+            </div>
+        `;
+        operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
+    }
+
     formatTranslationResults(results) {
         if (results.error) {
             return `<div class="alert alert-danger">${results.error}</div>`;
@@ -574,6 +621,20 @@ class LabManager {
             <div class="mb-2"><strong>Target:</strong> ${target}</div>
             <div class="mb-2"><strong>Original:</strong><br/><div class="p-2 bg-light rounded"><code>${original}</code></div></div>
             <div class="mb-2"><strong>Translated:</strong><br/><div class="p-2 bg-light rounded"><code>${translated}</code></div></div>
+        `;
+    }
+
+    formatSummarizationResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const summary = results.summary || '';
+        const original = this.inputText.value || '';
+        const compression = original && summary ? ((summary.length / original.length) * 100).toFixed(1) : null;
+        return `
+            <h6>Summary</h6>
+            <div class="p-3 bg-light rounded mb-3"><code>${summary}</code></div>
+            ${compression ? `<div class="text-muted">Compression: ${compression}% of original length</div>` : ''}
         `;
     }
     
