@@ -307,7 +307,8 @@ LAB_MODULES = {
     'chunking': {'title': 'Chunking & Parsing', 'description': 'Group words into meaningful phrases', 'icon': 'git-branch'},
     'machine_translation': {'title': 'Machine Translation', 'description': 'Translate text between languages', 'icon': 'globe'},
     'text_summarization': {'title': 'Text Summarization', 'description': 'Generate concise summaries of long text', 'icon': 'file-text'},
-    'text_generation': {'title': 'Text Generation', 'description': 'Generate text continuations from prompts', 'icon': 'type'}
+    'text_generation': {'title': 'Text Generation', 'description': 'Generate text continuations from prompts', 'icon': 'type'},
+    'topic_modelling': {'title': 'Topic Modelling', 'description': 'Discover latent topics with LDA', 'icon': 'book-open'}
 }
 
 # Routes

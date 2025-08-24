@@ -55,6 +55,11 @@ def register_routes(app, db):
             'title': 'Machine Translation',
             'description': 'Translate text between languages',
             'icon': 'globe'
+        },
+        'topic_modelling': {
+            'title': 'Topic Modelling',
+            'description': 'Discover latent topics with LDA',
+            'icon': 'book-open'
         }
     }
     
@@ -212,6 +217,11 @@ LAB_MODULES = {
         'title': 'Machine Translation',
         'description': 'Translate text between languages',
         'icon': 'globe'
+    },
+    'topic_modelling': {
+        'title': 'Topic Modelling',
+        'description': 'Discover latent topics with LDA',
+        'icon': 'book-open'
     }
 }
 

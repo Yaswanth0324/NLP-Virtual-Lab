@@ -124,6 +124,12 @@ class NLPProcessor:
                 return self.named_entity_recognition(text)
             elif operation == 'sentiment':
                 return self.sentiment_analysis(text)
+            elif operation == 'text_classify':
+                return self.text_classification(text)
+            elif operation == 'word_embeddings':
+                return self.word_embeddings(text)
+            elif operation == 'topic_modelling':
+                return self.topic_modelling(text)
             elif operation == 'stem':
                 return self.stem_text(text)
             elif operation == 'lemmatize':
@@ -146,12 +152,6 @@ class NLPProcessor:
                 return self.translate_text(text, 'te_en')
             elif operation == 'translate_te_hi':
                 return self.translate_text(text, 'te_hi')
-            elif operation == 'qa':
-                return self.answer_question(text)
-            elif operation == 'topic_model':
-                return self.topic_modeling(text)
-            elif operation == 'attention_demo':
-                return self.attention_demo(text)
             else:
                 return {'error': 'Unknown operation'}
         except Exception as e:
@@ -289,6 +289,225 @@ class NLPProcessor:
             }
         }
     
+    def text_classification(self, text):
+        if not text or not text.strip():
+            return {'error': 'No text provided.'}
+        # Simple keyword-based topic classifier for educational purposes
+        labels_keywords = {
+            'Technology': ['software', 'computer', 'ai', 'machine learning', 'algorithm', 'data', 'device', 'internet', 'app', 'programming', 'code', 'robot', 'cloud', 'model', 'neural', 'server'],
+            'Sports': ['game', 'match', 'tournament', 'score', 'team', 'player', 'coach', 'league', 'goal', 'win', 'loss', 'cricket', 'football', 'basketball', 'tennis'],
+            'Politics': ['election', 'policy', 'government', 'minister', 'parliament', 'vote', 'campaign', 'president', 'prime minister', 'bill', 'law', 'party', 'diplomacy'],
+            'Business': ['market', 'revenue', 'profit', 'loss', 'startup', 'company', 'stocks', 'share', 'merger', 'acquisition', 'sales', 'strategy', 'customer', 'growth'],
+            'Health': ['doctor', 'disease', 'treatment', 'diet', 'exercise', 'hospital', 'medicine', 'vaccine', 'mental', 'fitness', 'covid', 'symptom', 'therapy'],
+            'Education': ['school', 'college', 'university', 'student', 'teacher', 'exam', 'curriculum', 'classroom', 'assignment', 'lecture', 'research', 'degree'],
+            'Entertainment': ['movie', 'music', 'song', 'film', 'actor', 'actress', 'series', 'show', 'concert', 'theater', 'celebrity', 'bollywood', 'hollywood'],
+            'Science': ['experiment', 'research', 'theory', 'physics', 'chemistry', 'biology', 'laboratory', 'hypothesis', 'astronomy', 'genetics', 'quantum']
+        }
+        text_lower = text.lower()
+        scores = {label: 0 for label in labels_keywords}
+        keywords_found = {label: [] for label in labels_keywords}
+        for label, kws in labels_keywords.items():
+            for kw in kws:
+                pattern = r'\b' + re.escape(kw) + r'(s|es)?\b'
+                matches = re.findall(pattern, text_lower)
+                if matches:
+                    count = len(matches)
+                    scores[label] += count
+                    keywords_found[label].append(kw)
+        total = sum(scores.values())
+        probabilities = {label: (score / total if total > 0 else 0.0) for label, score in scores.items()}
+        if total > 0:
+            predicted_label = max(probabilities, key=probabilities.get)
+            confidence = probabilities[predicted_label]
+        else:
+            predicted_label = 'Unknown'
+            confidence = 0.0
+        return {
+            'predicted_label': predicted_label,
+            'confidence': confidence,
+            'probabilities': probabilities,
+            'keywords_found': keywords_found,
+            'visualization': {
+                'type': 'classification_chart',
+                'data': probabilities
+            }
+        }
+
+    def topic_modelling(self, text, num_topics=3, num_words=5):
+        """
+        Perform topic modelling using LDA.
+        :param text: Input text (string or list of documents)
+        :param num_topics: Number of topics to extract
+        :param num_words: Number of top words per topic
+        :return: dict with topics and their top words
+        """
+        try:
+            # Handle input
+            if isinstance(text, str):
+                # Prefer splitting by paragraphs for richer topics; fallback to sentences
+                docs = [doc.strip() for doc in text.split("\n") if doc.strip()]
+                if not docs:
+                    docs = sent_tokenize(text)
+            else:
+                docs = text
+
+            if not isinstance(docs, (list, tuple)) or len(docs) == 0:
+                return {'error': 'No documents found. Provide multiple lines (each line = one document) or a longer text.'}
+
+            n_docs = len(docs)
+            # Choose safer df thresholds for small corpora to avoid conflicts
+            min_df_param = 1 if n_docs < 3 else 2
+            max_df_param = n_docs if n_docs < 3 else 0.9
+
+            # First attempt
+            try:
+                vectorizer = CountVectorizer(stop_words='english', max_df=max_df_param, min_df=min_df_param)
+                X = vectorizer.fit_transform(docs)
+            except Exception as ve:
+                logging.warning(f"CountVectorizer failed with min_df={min_df_param}, max_df={max_df_param}: {ve}. Retrying with min_df=1, max_df=1.0")
+                # Fallback attempt for very small or sparse inputs
+                vectorizer = CountVectorizer(stop_words='english', max_df=1.0, min_df=1)
+                X = vectorizer.fit_transform(docs)
+
+            n_features = X.shape[1]
+            if n_features == 0:
+                return {'error': 'No vocabulary after vectorization. Provide richer input (avoid only stopwords) or more documents.'}
+
+            # Ensure topics do not exceed available features
+            n_topics = max(1, min(int(num_topics or 1), n_features))
+
+            # Fit LDA
+            lda = LatentDirichletAllocation(n_components=n_topics, random_state=42)
+            doc_topic_matrix = lda.fit_transform(X)
+            words = vectorizer.get_feature_names_out()
+
+            # Extract topics
+            topics = []
+            for idx, topic in enumerate(lda.components_):
+                top_indices = topic.argsort()[-int(num_words or 5):][::-1]
+                top_words = [words[i] for i in top_indices]
+                topics.append({
+                    'topic': idx + 1,
+                    'words': top_words,
+                    'distribution': topic.tolist()
+                })
+
+            return {
+                'num_topics': n_topics,
+                'topics': topics,
+                'doc_topic_matrix': doc_topic_matrix.tolist(),
+                'visualization': {
+                    'type': 'topic_words',
+                    'data': topics
+                }
+            }
+        except Exception as e:
+            logging.error(f"Topic modelling failed: {e}")
+            return {'error': f'Topic modelling failed: {str(e)}'}
+
+    def word_embeddings(self, text, model_name='glove-wiki-gigaword-50'):
+        """
+        Generate word embeddings for each word in the text using a pre-trained model.
+        Falls back to a deterministic hash-based embedding if gensim or its models
+        are unavailable.
+        :param text: Input text
+        :param model_name: Pre-trained model name (default: 'glove-wiki-gigaword-50')
+        :return: dict with word and its embedding vector
+        """
+        tokens = word_tokenize(text.lower())
+        # First, try using gensim pretrained vectors if available
+        try:
+            from gensim.models import KeyedVectors  # noqa: F401
+            import gensim.downloader as api
+            from sklearn.decomposition import PCA
+
+            model = api.load(model_name)
+            embeddings = {}
+            vectors = []
+            words_for_projection = []
+            oov_map = {}
+            import hashlib
+            # Use unique tokens to avoid duplicates and ensure one point per word
+            unique_tokens = []
+            for w in tokens:
+                if w not in unique_tokens:
+                    unique_tokens.append(w)
+            for word in unique_tokens:
+                if word in getattr(model, 'key_to_index', {}):
+                    vec = model[word]
+                    embeddings[word] = vec.tolist()
+                    oov_map[word] = False
+                else:
+                    embeddings[word] = None  # Out-of-vocabulary for this model
+                    # Deterministic hash-based vector so OOV words still appear in projection
+                    h = int(hashlib.md5(word.encode('utf-8')).hexdigest()[:8], 16)
+                    rng = np.random.default_rng(h)
+                    vec = rng.normal(0, 1, int(getattr(model, 'vector_size', 50))).astype(float)
+                    oov_map[word] = True
+                vectors.append(vec)
+                words_for_projection.append(word)
+
+            projection = None
+            if len(vectors) >= 2:
+                try:
+                    pca = PCA(n_components=2)
+                    coords = pca.fit_transform(np.array(vectors))
+                    projection = {w: {'x': float(x), 'y': float(y), 'oov': bool(oov_map.get(w, False))} for (w, (x, y)) in zip(words_for_projection, coords)}
+                except Exception as pe:
+                    logging.warning(f"PCA projection failed: {pe}")
+
+            return {
+                'model': model_name,
+                'embeddings': embeddings,
+                'dimension': int(getattr(model, 'vector_size', 0)),
+                'visualization': {
+                    'type': 'embedding_projection',
+                    'data': projection or {}
+                }
+            }
+        except Exception as e:
+            logging.warning(f"Gensim embeddings unavailable, using hash-based fallback: {e}")
+            # Fallback: deterministic hash-based embeddings (pure numpy)
+            try:
+                import hashlib
+                from sklearn.decomposition import PCA
+
+                dim = 50  # match default GloVe size for consistency
+                embeddings = {}
+                vectors = []
+                words = []
+
+                for word in tokens:
+                    # Deterministic seed per word using md5 hash
+                    h = int(hashlib.md5(word.encode('utf-8')).hexdigest()[:8], 16)
+                    rng = np.random.default_rng(h)
+                    vec = rng.normal(0, 1, dim).astype(float)
+                    embeddings[word] = vec.tolist()
+                    vectors.append(vec)
+                    words.append(word)
+
+                projection = None
+                if len(vectors) >= 2:
+                    try:
+                        pca = PCA(n_components=2)
+                        coords = pca.fit_transform(np.vstack(vectors))
+                        projection = {w: {'x': float(x), 'y': float(y), 'oov': False} for w, (x, y) in zip(words, coords)}
+                    except Exception as pe:
+                        logging.warning(f"PCA projection failed: {pe}")
+
+                return {
+                    'model': f'hash-embedding-{dim}',
+                    'embeddings': embeddings,
+                    'dimension': dim,
+                    'visualization': {
+                        'type': 'embedding_projection',
+                        'data': projection or {}
+                    }
+                }
+            except Exception as fe:
+                logging.error(f"Word embedding failed in fallback: {fe}")
+                return {'error': f'Word embedding failed: {str(fe)}'}
+
     def stem_text(self, text):
         tokens = word_tokenize(text)
         stemmed = [(token, self.stemmer.stem(token)) for token in tokens]

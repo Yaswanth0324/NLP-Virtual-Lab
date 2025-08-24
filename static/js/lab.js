@@ -45,6 +45,7 @@ class LabManager {
         this.setupTranslationControlsIfNeeded();
         this.setupSummarizationControlsIfNeeded();
         this.setupTextGenerationControlsIfNeeded();
+        this.setupTopicModellingExamplesIfNeeded();
     }
     
     setupOperationOptions() {
@@ -83,9 +84,10 @@ class LabManager {
                 { value: 'chunk', label: 'Noun Phrase Chunking' }
             ],
             'text_classification': [
-                { value: 'sentiment', label: 'Sentiment Classification' }
+                { value: 'text_classify', label: 'Text Classification' }
             ],
             'word_embeddings': [
+                { value: 'word_embeddings', label: 'Word Embeddings' },
                 { value: 'tokenize', label: 'Text Tokenization' }
             ],
             'machine_translation': [
@@ -96,6 +98,9 @@ class LabManager {
             ],
             'text_generation': [
                 { value: 'generate', label: 'Generate Text' }
+            ],
+            'topic_modelling': [
+                { value: 'topic_modelling', label: 'Topic Modelling (LDA)' }
             ]
         };
         
@@ -243,6 +248,33 @@ class LabManager {
                     <li><strong>Limitations:</strong> Models can produce repetitive, biased, or incorrect text (“hallucinations”). Always review outputs, especially for factual tasks.</li>
                 </ul>
                 <p>Try different prompts and parameters to see how the style, creativity, and coherence change.</p>
+            `,
+            'topic_modelling': `
+                <h6>Understanding Topic Modelling (LDA)</h6>
+                <p>Topic modelling automatically finds groups of related words (topics) that frequently appear together across documents. LDA assumes each document is a mixture of topics, and each topic is a mixture of words.</p>
+                <h6 class="mt-2">How to use this lab</h6>
+                <ol>
+                  <li>Paste multiple short documents, one per line (recommended), or a longer paragraph.</li>
+                  <li>Select <strong>Topic Modelling (LDA)</strong> and click <strong>Process Text</strong>.</li>
+                  <li>View the discovered topics and their top words. Use the buttons to switch the topic shown in the chart.</li>
+                </ol>
+                <h6 class="mt-2">How to read the output</h6>
+                <ul>
+                  <li><strong>Topics:</strong> Each topic is shown as a list of top words (the strongest signals for that theme).</li>
+                  <li><strong>Chart:</strong> Horizontal bars show the most important words for the selected topic.</li>
+                  <li><strong>Document mixture:</strong> Internally, each document can contain multiple topics in different proportions.</li>
+                </ul>
+                <h6 class="mt-2">Tips</h6>
+                <ul>
+                  <li>Provide at least 5–8 short documents (one per line) for clearer topics.</li>
+                  <li>Keep each line focused (e.g., headlines, short paragraphs).</li>
+                  <li>Avoid only stopwords; include meaningful content words.</li>
+                </ul>
+                <h6 class="mt-2">Limitations</h6>
+                <ul>
+                  <li>Topics are approximate; similar words may appear in multiple topics.</li>
+                  <li>Very small inputs can produce unstable topics—try adding more lines.</li>
+                </ul>
             `
         };
         
@@ -336,11 +368,17 @@ class LabManager {
             case 'sentiment':
                 html = this.formatSentimentResults(results);
                 break;
+            case 'text_classify':
+                html = this.formatClassificationResults(results);
+                break;
             case 'stem':
                 html = this.formatStemmingResults(results);
                 break;
             case 'lemmatize':
                 html = this.formatLemmatizationResults(results);
+                break;
+            case 'word_embeddings':
+                html = this.formatEmbeddingsResults(results);
                 break;
             case 'chunk':
                 html = this.formatChunkingResults(results);
@@ -353,6 +391,9 @@ class LabManager {
                 break;
             case 'generate':
                 html = this.formatTextGenerationResults(results);
+                break;
+            case 'topic_modelling':
+                html = this.formatTopicModellingResults(results);
                 break;
             default:
                 html = '<div class="alert alert-info">Results will appear here.</div>';
@@ -516,6 +557,33 @@ class LabManager {
         `;
         return html;
     }
+
+    formatClassificationResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const predicted = results.predicted_label || 'Unknown';
+        const confidence = results.confidence || 0;
+        const probs = results.probabilities || {};
+        const keywords = results.keywords_found || {};
+        // Build a list of top classes by probability
+        const entries = Object.entries(probs).sort((a,b) => b[1]-a[1]);
+        const listItems = entries.map(([label, p]) => `<li>${label}: ${(p*100).toFixed(1)}%</li>`).join('');
+        // Keywords for the predicted class (if any)
+        const keyList = (keywords[predicted] || []).map(k => `<span class="badge bg-secondary me-1 mb-1">${k}</span>`).join('');
+        return `
+            <h6>Text Classification</h6>
+            <div class="mb-3">
+                <div><strong>Predicted Class:</strong> ${predicted}</div>
+                <div><strong>Confidence:</strong> ${(confidence*100).toFixed(1)}%</div>
+            </div>
+            <div class="mb-3">
+                <h6>Class Probabilities</h6>
+                <ul>${listItems}</ul>
+            </div>
+            ${keyList ? `<div class="mb-2"><h6>Signals found for "${predicted}"</h6>${keyList}</div>` : ''}
+        `;
+    }
     
     formatStemmingResults(results) {
         let html = '<h6>Stemming Results</h6>';
@@ -652,6 +720,107 @@ class LabManager {
         operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
     }
 
+    setupTopicModellingExamplesIfNeeded() {
+        if (this.moduleName !== 'topic_modelling') return;
+        const container = document.querySelector('.example-texts');
+        if (!container) return;
+
+        const examples = [
+            {
+                label: 'Tech News',
+                text: [
+                    'AI startup releases open-source model for image generation.',
+                    'Cloud providers compete on GPU availability and pricing.',
+                    'Regulators release guidance on responsible AI deployments.',
+                    'Researchers publish paper on efficient transformers.',
+                    'Edge devices run quantized models with low power.',
+                    'Startups race to build foundation model tooling.',
+                    'Big tech announces partnerships with chip makers.',
+                    'Universities launch AI ethics programs.'
+                ].join('\n')
+            },
+            {
+                label: 'Health & Fitness',
+                text: [
+                    'Regular exercise improves cardiovascular health.',
+                    'High fiber diet aids digestion and satiety.',
+                    'Sleep quality affects concentration and mood.',
+                    'Hydration supports metabolism and endurance.',
+                    'Strength training increases bone density.',
+                    'Yoga reduces stress and improves flexibility.',
+                    'Walking after meals regulates blood sugar.',
+                    'Sedentary lifestyle correlates with weight gain.'
+                ].join('\n')
+            },
+            {
+                label: 'Politics & Policy',
+                text: [
+                    'Parliament debates a new data privacy bill.',
+                    'Opposition raises concerns about surveillance.',
+                    'Committee proposes transparency requirements.',
+                    'Court rules on constitutionality of the act.',
+                    'Public consultations gather citizen feedback.',
+                    'Minister announces digital rights charter.',
+                    'Election commission updates campaign finance rules.',
+                    'Local councils pilot open data portals.'
+                ].join('\n')
+            },
+            {
+                label: 'Sports Articles',
+                text: [
+                    'The team secured a narrow win in the final.',
+                    'Star striker scored two goals in stoppage time.',
+                    'Coach emphasized defense during practice.',
+                    'Injuries forced a change in the lineup.',
+                    'Fans celebrated the championship parade.',
+                    'Midfielder transferred to a rival club.',
+                    'Referee decisions sparked controversy.',
+                    'Training camp focused on endurance drills.'
+                ].join('\n')
+            },
+            {
+                label: 'Business & Startups',
+                text: [
+                    'The startup closed a Series A funding round.',
+                    'SaaS revenue grew due to enterprise deals.',
+                    'Customer churn decreased after onboarding revamp.',
+                    'Founders expanded into the European market.',
+                    'Pricing experiments improved gross margins.',
+                    'Partnerships drove new distribution channels.',
+                    'Layoffs followed a strategic pivot.',
+                    'Board approved a share buyback plan.'
+                ].join('\n')
+            },
+            {
+                label: 'Science & Environment',
+                text: [
+                    'Researchers measured rising ocean temperatures.',
+                    'A new battery chemistry improved energy density.',
+                    'Astronomers detected a distant exoplanet.',
+                    'Ecologists tracked biodiversity in rainforests.',
+                    'Physicists tested a quantum error-correction method.',
+                    'Glacier retreat accelerated during heat waves.',
+                    'Chemists developed biodegradable plastics.',
+                    'Engineers built a low-cost air-quality sensor.'
+                ].join('\n')
+            }
+        ];
+
+        // Replace existing examples with topic modelling examples
+        container.innerHTML = '';
+        examples.forEach(ex => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-outline-info me-2 mb-2 example-btn';
+            btn.setAttribute('data-text', ex.text);
+            btn.textContent = ex.label;
+            btn.addEventListener('click', () => {
+                this.inputText.value = ex.text;
+                this.inputText.focus();
+            });
+            container.appendChild(btn);
+        });
+    }
+
     formatTranslationResults(results) {
         if (results.error) {
             return `<div class="alert alert-danger">${results.error}</div>`;
@@ -737,6 +906,15 @@ class LabManager {
                 break;
             case 'sentiment_chart':
                 this.createSentimentChart(visData);
+                break;
+            case 'embedding_projection':
+                this.createEmbeddingProjection(visData);
+                break;
+            case 'classification_chart':
+                this.createClassificationChart(visData);
+                break;
+            case 'topic_words':
+                this.createTopicWordsChart(visData);
                 break;
             default:
                 this.visualization.innerHTML = '<div class="alert alert-info">Visualization not available for this operation.</div>';
@@ -908,7 +1086,309 @@ class LabManager {
             }
         });
     }
+
+    createClassificationChart(data) {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'classificationChart';
+        canvas.width = 400;
+        canvas.height = 300;
+
+        this.visualization.innerHTML = '';
+        this.visualization.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        // Sort classes by probability and keep top 6
+        const entries = Object.entries(data || {}).sort((a,b) => b[1]-a[1]).slice(0, 6);
+        const labels = entries.map(([k]) => k);
+        const values = entries.map(([,v]) => v);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Probability',
+                    data: values,
+                    backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    }
+
+    createTopicWordsChart(topics) {
+        // topics: [{topic, words, distribution}]
+        this.visualization.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.style.width = '100%';
+        this.visualization.appendChild(wrapper);
+
+        if (!Array.isArray(topics) || topics.length === 0) {
+            wrapper.innerHTML = '<div class="alert alert-secondary">No topics found.</div>';
+            return;
+        }
+
+        // Topic selector
+        const tabs = document.createElement('div');
+        tabs.className = 'mb-2';
+        wrapper.appendChild(tabs);
+
+        // Fixed-height chart container to prevent runaway resizing
+        const chartHolder = document.createElement('div');
+        chartHolder.className = 'chart-container';
+        chartHolder.style.width = '100%';
+        chartHolder.style.height = '320px';
+        chartHolder.style.position = 'relative';
+        wrapper.appendChild(chartHolder);
+        const canvas = document.createElement('canvas');
+        chartHolder.appendChild(canvas);
+
+        let chart = null;
+        const render = (topic) => {
+            const words = Array.isArray(topic.words) ? topic.words.slice() : [];
+            const weights = Array.isArray(topic.weights) ? topic.weights.slice() : null;
+
+            // Build pairs of {word, value}. If weights exist, use them; otherwise use descending rank
+            let pairs = words.map((w, i) => ({ w, v: weights ? Number(weights[i]) || 0 : (words.length - i) }));
+            // If weights provided, sort descending by weight to ensure most important first
+            if (weights) {
+                pairs.sort((a, b) => b.v - a.v);
+            }
+            // Limit to first 12 items for readability
+            const maxItems = Math.min(pairs.length, 12);
+            pairs = pairs.slice(0, maxItems);
+
+            // For horizontal bar, first label renders at top row and ensure finite values
+            const labels = pairs.map(p => p.w);
+            const values = pairs.map(p => {
+                const v = Number(p.v);
+                return Number.isFinite(v) ? v : 0;
+            });
+
+            const ctx = canvas.getContext('2d');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: `Topic ${topic.topic} top words (weight)`,
+                        data: values,
+                        backgroundColor: 'rgba(13, 110, 253, 0.8)'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true }
+                    },
+                    layout: { padding: { top: 4, right: 8, bottom: 4, left: 8 } }
+                }
+            });
+        };
+
+        topics.forEach((t, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `btn btn-sm ${idx === 0 ? 'btn-primary' : 'btn-outline-primary'} me-2`;
+            btn.textContent = `Topic ${t.topic}`;
+            btn.addEventListener('click', () => {
+                tabs.querySelectorAll('button').forEach((b, i) => {
+                    b.className = `btn btn-sm ${i === idx ? 'btn-primary' : 'btn-outline-primary'} me-2`;
+                });
+                render(t);
+            });
+            tabs.appendChild(btn);
+        });
+
+        render(topics[0]);
+    }
+
+    formatTopicModellingResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const num = results.num_topics || 0;
+        const topics = Array.isArray(results.topics) ? results.topics : [];
+        const list = topics.map(t => {
+            const words = (t.words || []).map(w => `<span class="badge bg-secondary me-1 mb-1">${w}</span>`).join('');
+            return `<div class="mb-3"><strong>Topic ${t.topic}:</strong><div class="mt-1">${words}</div></div>`;
+        }).join('');
+        return `
+            <h6>Topic Modelling</h6>
+            <div class="mb-2"><strong>Topics:</strong> ${num}</div>
+            ${list || '<div class="text-muted">No topics extracted.</div>'}
+            <div class="text-muted">Use the Visualization section to switch between topics.</div>
+        `;
+    }
     
+    formatEmbeddingsResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const model = results.model || 'unknown';
+        const dim = results.dimension || 0;
+        const emb = results.embeddings || {};
+        const words = Object.keys(emb);
+        const list = words.map(w => {
+            const v = emb[w];
+            return `<li><code>${w}</code> — ${Array.isArray(v) ? `vector[${v.length}]` : '<span class="text-muted">out-of-vocabulary</span>'}</li>`;
+        }).join('');
+        return `
+            <h6>Word Embeddings</h6>
+            <div class="mb-2"><strong>Model:</strong> ${model}</div>
+            <div class="mb-3"><strong>Dimension:</strong> ${dim}</div>
+            <div class="mb-2"><strong>Words:</strong></div>
+            <ul>${list}</ul>
+            <div class="text-muted">A 2D projection (PCA) is shown in the Visualization section if enough words are in vocabulary.</div>
+        `;
+    }
+
+    createEmbeddingProjection(data) {
+        // data: { word: {x, y, oov?}, ... }
+        this.visualization.innerHTML = '';
+
+        // Create container that stretches to available width inside flex parent
+        const container = document.createElement('div');
+        container.style.height = '320px';
+        container.style.width = '100%';
+        container.style.position = 'relative';
+        container.style.background = '#1e1e1e';
+        container.style.border = '1px solid #2b2b2b';
+        container.style.borderRadius = '6px';
+        container.style.padding = '8px';
+        this.visualization.appendChild(container);
+
+        const keys = Object.keys(data || {});
+        if (keys.length === 0) {
+            container.innerHTML = '<div class="alert alert-secondary">No projection available.</div>';
+            return;
+        }
+
+        // Colors for in-vocab and OOV
+        const colorIV = 'rgba(13, 110, 253, 0.9)'; // blue
+        const colorOOV = 'rgba(255, 159, 64, 0.95)'; // orange
+
+        // Tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.style.cssText = 'position:absolute; pointer-events:none; background:rgba(0,0,0,0.8); color:#fff; padding:4px 6px; border-radius:4px; font-size:12px; display:none; z-index:5;';
+        container.appendChild(tooltip);
+
+        // Legend
+        const legend = document.createElement('div');
+        legend.style.cssText = 'position:absolute; top:8px; left:8px; display:flex; gap:10px; align-items:center; background:rgba(0,0,0,0.4); padding:4px 6px; border-radius:4px; color:#eee; font-size:12px;';
+        legend.innerHTML = `
+            <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:${colorIV}; display:inline-block;"></span>In-vocab</span>
+            <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:${colorOOV}; display:inline-block;"></span>OOV</span>
+        `;
+        container.appendChild(legend);
+
+        const xs = keys.map(k => data[k].x);
+        const ys = keys.map(k => data[k].y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+        const pad = 24;
+
+        // Create SVG and ensure it fills the container
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.style.display = 'block';
+        container.appendChild(svg);
+
+        // Compute dimensions after SVG is in the DOM
+        const bounds = container.getBoundingClientRect();
+        const innerWidth = Math.max(0, bounds.width - pad * 2) || Math.max(0, this.visualization.clientWidth - pad * 2) || 600;
+        const innerHeight = Math.max(0, (container.clientHeight || 300) - pad * 2);
+
+        // viewBox for crisp scaling, include padding
+        svg.setAttribute('viewBox', `0 0 ${innerWidth + pad * 2} ${innerHeight + pad * 2}`);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+        // Axes (optional light grid)
+        const gridColor = 'rgba(255,255,255,0.08)';
+        const drawLine = (x1,y1,x2,y2) => {
+            const line = document.createElementNS(svgNS, 'line');
+            line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+            line.setAttribute('stroke', gridColor);
+            line.setAttribute('stroke-width', '1');
+            svg.appendChild(line);
+        };
+        // Border
+        drawLine(pad, pad, innerWidth + pad, pad);
+        drawLine(pad, innerHeight + pad, innerWidth + pad, innerHeight + pad);
+        drawLine(pad, pad, pad, innerHeight + pad);
+        drawLine(innerWidth + pad, pad, innerWidth + pad, innerHeight + pad);
+
+        const scaleX = v => pad + ((v - minX) / (maxX - minX || 1)) * innerWidth;
+        const scaleY = v => pad + (1 - ((v - minY) / (maxY - minY || 1))) * innerHeight; // invert Y
+
+        // Draw points and labels with hover tooltips
+        keys.forEach(k => {
+            const point = data[k] || {x: 0, y: 0};
+            const cx = scaleX(point.x);
+            const cy = scaleY(point.y);
+            const oov = !!point.oov;
+            const fill = oov ? colorOOV : colorIV;
+
+            const circle = document.createElementNS(svgNS, 'circle');
+            circle.setAttribute('cx', cx);
+            circle.setAttribute('cy', cy);
+            circle.setAttribute('r', 4.5);
+            circle.setAttribute('fill', fill);
+            circle.style.cursor = 'default';
+            const title = document.createElementNS(svgNS, 'title');
+            title.textContent = `${k} ${oov ? '(OOV)' : ''}`;
+            circle.appendChild(title);
+            svg.appendChild(circle);
+
+            const label = document.createElementNS(svgNS, 'text');
+            label.setAttribute('x', cx + 6);
+            label.setAttribute('y', cy - 6);
+            label.setAttribute('fill', '#ddd');
+            label.setAttribute('font-size', '12');
+            label.textContent = k;
+            svg.appendChild(label);
+
+            // Tooltip interactions
+            const showTip = (evt) => {
+                tooltip.style.display = 'block';
+                tooltip.innerHTML = `<strong>${k}</strong> ${oov ? '<span style="color:#ffb26b">(OOV)</span>' : ''}`;
+                const rect = container.getBoundingClientRect();
+                const x = (evt.clientX - rect.left) + 10;
+                const y = (evt.clientY - rect.top) + 10;
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+            };
+            const hideTip = () => { tooltip.style.display = 'none'; };
+
+            circle.addEventListener('mouseenter', showTip);
+            circle.addEventListener('mousemove', showTip);
+            circle.addEventListener('mouseleave', hideTip);
+            label.addEventListener('mouseenter', showTip);
+            label.addEventListener('mousemove', showTip);
+            label.addEventListener('mouseleave', hideTip);
+        });
+    }
+
     createParseTree(chunkTree) {
         this.visualization.innerHTML = '';
         

@@ -91,6 +91,76 @@
                                 data-text="Researchers analyzed ten thousand customer reviews from multiple regions to understand satisfaction drivers, recurring complaints, and language differences. Using topic modeling and sentiment analysis, they identified themes such as documentation clarity, onboarding speed, product reliability, and response time from support teams. Positive ratings clustered around clear setup guides, consistent updates, and proactive communication before issues escalated. Negative feedback frequently cited confusing error messages, slow account recovery, and limited self service tools. The authors recommend investing in searchable knowledge bases, tutorial videos, and in product guidance that adapts to user behavior. They also propose service level targets, transparent status pages, and structured feedback channels. According to follow up experiments, small improvements in guidance and responsiveness produced meaningful gains in retention and word of mouth.">
                                 Research Summary
                             </button>
+                            {% elif module_name == 'text_classification' %}
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The startup launched a cloud-based analytics platform to help companies track revenue and customer growth across markets, integrating with existing sales tools and dashboards.">
+                                Business
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Researchers used a neural network to classify images, deploying the model on edge devices with optimized inference and quantization techniques.">
+                                Technology
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The team secured a 2-1 win in the championship match after a dramatic goal in the final minutes, with the coach praising the defense.">
+                                Sports
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The parliament debated a new bill on data privacy, with party leaders urging transparent policy and fair enforcement.">
+                                Politics
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Doctors recommended a balanced diet, regular exercise, and timely vaccination to reduce the risk of chronic disease and improve mental health.">
+                                Health
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="University students prepared for final exams, attending lectures, submitting assignments, and conducting research in the laboratory.">
+                                Education
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The film's lead actor announced a worldwide tour to promote the new movie, while the soundtrack topped music charts.">
+                                Entertainment
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Astronomers observed a distant galaxy to test a new theory in astrophysics, using advanced instruments to study quantum effects.">
+                                Science
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger me-2 mb-2 example-btn" 
+                                data-text="Congratulations! You have won a cash prize. Click the link to claim your reward now. Limited time offer.">
+                                Spam
+                            </button>
+                            <button class="btn btn-sm btn-outline-success me-2 mb-2 example-btn" 
+                                data-text="Hi team, please review the project report and join the meeting at 3 PM. Let me know if you have questions.">
+                                Not Spam
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning me-2 mb-2 example-btn" 
+                                data-text="University students attended a lecture on machine learning and programming where a company presented market growth and revenue strategy. The government announced a new policy after the election, while the coach discussed the team's goal in the championship match. Doctors at the hospital recommended vaccine updates for public health. Meanwhile, a research laboratory conducted an experiment in physics, and an actor promoted a new film with music from the soundtrack.">
+                                Mixed Topics (All Classes)
+                            </button>
+                            {% elif module_name == 'word_embeddings' %}
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="king queen man woman prince princess royal palace">
+                                Royalty (king-queen-man-woman)
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="france paris germany berlin italy rome spain madrid europe capital city">
+                                Countries and Capitals
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="cat dog tiger lion animal pet wild feline canine">
+                                Animals and Species
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="computer software hardware network server data algorithm model learning">
+                                Technology Terms
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="run running ran walk walking walked jump jumping jumped">
+                                Verb Forms
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="big large huge small tiny little fast quick rapid slow sluggish">
+                                Adjectives (Synonyms/Antonyms)
+                            </button>
                             {% elif module_name == 'text_generation' %}
                             <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
                                 data-text="Once upon a time in a small village, a young boy discovered">
