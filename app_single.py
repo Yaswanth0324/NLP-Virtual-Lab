@@ -81,6 +81,8 @@ def get_text_generator():
 
     return _text_generator
 
+# QA moved to nlp_processor.NLPProcessor
+
 # --- Database configuration is now handled directly in the route ---
 
 
@@ -290,6 +292,25 @@ def generate():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/qa', methods=['POST'])
+def question_answering():
+    data = request.get_json()
+    question = (data.get('question') or '').strip()
+    context = (data.get('context') or '').strip()
+
+    if not question or not context:
+        return jsonify({'error': 'Both question and context are required.'}), 400
+
+    try:
+        from nlp_processor import NLPProcessor
+        processor = NLPProcessor()
+        result = processor.question_answer(question, context)
+        return jsonify(result)
+    except Exception as e:
+        logging.exception('QA endpoint failed')
+        return jsonify({'error': f'QA failed: {str(e)}'}), 200
+
+
 # --- MODELS REMOVED ---
 # The User, UserProgress, and QuizQuestion SQLAlchemy models have been removed.
 # The application will now connect directly to the database when needed.
@@ -308,7 +329,8 @@ LAB_MODULES = {
     'machine_translation': {'title': 'Machine Translation', 'description': 'Translate text between languages', 'icon': 'globe'},
     'text_summarization': {'title': 'Text Summarization', 'description': 'Generate concise summaries of long text', 'icon': 'file-text'},
     'text_generation': {'title': 'Text Generation', 'description': 'Generate text continuations from prompts', 'icon': 'type'},
-    'topic_modelling': {'title': 'Topic Modelling', 'description': 'Discover latent topics with LDA', 'icon': 'book-open'}
+    'topic_modelling': {'title': 'Topic Modelling', 'description': 'Discover latent topics with LDA', 'icon': 'book-open'},
+    'question_answering': {'title': 'Question Answering', 'description': 'Find answers from context passages', 'icon': 'help-circle'}
 }
 
 # Routes

@@ -28,6 +28,11 @@ class LabManager {
             btn.addEventListener('click', (e) => {
                 this.inputText.value = e.target.dataset.text;
                 this.inputText.focus();
+                
+                // For question answering module, also populate questions
+                if (this.moduleName === 'question_answering' && e.target.dataset.questions) {
+                    this.populateQuestions(e.target.dataset.questions);
+                }
             });
         });
         
@@ -46,6 +51,7 @@ class LabManager {
         this.setupSummarizationControlsIfNeeded();
         this.setupTextGenerationControlsIfNeeded();
         this.setupTopicModellingExamplesIfNeeded();
+        this.setupQuestionAnsweringControlsIfNeeded();
     }
     
     setupOperationOptions() {
@@ -101,6 +107,9 @@ class LabManager {
             ],
             'topic_modelling': [
                 { value: 'topic_modelling', label: 'Topic Modelling (LDA)' }
+            ],
+            'question_answering': [
+                { value: 'question_answer', label: 'Question Answering' }
             ]
         };
         
@@ -275,6 +284,16 @@ class LabManager {
                   <li>Topics are approximate; similar words may appear in multiple topics.</li>
                   <li>Very small inputs can produce unstable topics—try adding more lines.</li>
                 </ul>
+            `,
+            'question_answering': `
+                <h6>Question Answering</h6>
+                <p>Provide a <strong>context</strong> (in the main text box) and a <strong>question</strong> (in the input below). The model finds the most likely answer span inside the context.</p>
+                <ul>
+                    <li><strong>Context:</strong> A paragraph or two containing the answer.</li>
+                    <li><strong>Question:</strong> A clear, specific question that can be answered from the context.</li>
+                    <li><strong>Output:</strong> Extracted answer text and a confidence score.</li>
+                </ul>
+                <p class="text-muted">Tip: Use factual passages (e.g., Wikipedia-like text) for best results.</p>
             `
         };
         
@@ -319,6 +338,18 @@ class LabManager {
                 const num_return_sequences = genNumSeqInput ? parseInt(genNumSeqInput.value, 10) || 1 : 1;
                 endpoint = '/generate';
                 payload = { prompt: text, max_length, num_return_sequences };
+            } else if (operation === 'question_answer' || this.moduleName === 'question_answering') {
+                const qInput = document.getElementById('qaQuestion');
+                const question = qInput ? qInput.value.trim() : '';
+                const context = text;
+                if (!question) {
+                    this.hideSpinner();
+                    showAlert('Please enter a question for Question Answering.', 'warning');
+                    this.processBtn.disabled = false;
+                    return;
+                }
+                endpoint = '/qa';
+                payload = { question, context };
             }
 
             const response = await makeAPIRequest(endpoint, {
@@ -394,6 +425,9 @@ class LabManager {
                 break;
             case 'topic_modelling':
                 html = this.formatTopicModellingResults(results);
+                break;
+            case 'question_answer':
+                html = this.formatQAResults(results);
                 break;
             default:
                 html = '<div class="alert alert-info">Results will appear here.</div>';
@@ -718,6 +752,61 @@ class LabManager {
             </div>
         `;
         operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
+    }
+
+    setupQuestionAnsweringControlsIfNeeded() {
+        if (this.moduleName !== 'question_answering') return;
+        const operationSelect = document.getElementById('operationSelect');
+        if (!operationSelect) return;
+
+        // Question input (context is the main text box)
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mb-3';
+        wrapper.innerHTML = `
+            <label for="qaQuestion" class="form-label">Question</label>
+            <input id="qaQuestion" type="text" class="form-control" placeholder="e.g., What is the capital of France?" />
+            <div class="form-text">Context should be in the main text box above.</div>
+        `;
+        operationSelect.parentElement.insertBefore(wrapper, operationSelect.nextSibling);
+
+        // Add questions section
+        const questionsWrapper = document.createElement('div');
+        questionsWrapper.className = 'mb-3';
+        questionsWrapper.innerHTML = `
+            <label class="form-label">Sample Questions</label>
+            <div id="sampleQuestions" class="sample-questions">
+                <div class="text-muted">Click on an example text above to see related questions here.</div>
+            </div>
+        `;
+        wrapper.parentElement.insertBefore(questionsWrapper, wrapper.nextSibling);
+    }
+
+    populateQuestions(questionsJson) {
+        try {
+            const questions = JSON.parse(questionsJson);
+            const questionsContainer = document.getElementById('sampleQuestions');
+            
+            if (!questionsContainer || !Array.isArray(questions)) return;
+            
+            questionsContainer.innerHTML = '';
+            
+            questions.forEach((question, index) => {
+                const questionBtn = document.createElement('button');
+                questionBtn.className = 'btn btn-sm btn-outline-secondary me-2 mb-2 question-btn';
+                questionBtn.textContent = question;
+                questionBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const qaInput = document.getElementById('qaQuestion');
+                    if (qaInput) {
+                        qaInput.value = question;
+                        qaInput.focus();
+                    }
+                });
+                questionsContainer.appendChild(questionBtn);
+            });
+        } catch (error) {
+            console.error('Error parsing questions:', error);
+        }
     }
 
     setupTopicModellingExamplesIfNeeded() {
@@ -1234,6 +1323,22 @@ class LabManager {
             <div class="mb-2"><strong>Topics:</strong> ${num}</div>
             ${list || '<div class="text-muted">No topics extracted.</div>'}
             <div class="text-muted">Use the Visualization section to switch between topics.</div>
+        `;
+    }
+
+    formatQAResults(results) {
+        if (results.error) {
+            return `<div class="alert alert-danger">${results.error}</div>`;
+        }
+        const answer = results.answer || '';
+        const score = typeof results.score === 'number' ? (results.score * 100).toFixed(2) : '—';
+        if (!answer) {
+            return '<div class="alert alert-info">No answer found in the given context.</div>';
+        }
+        return `
+            <h6>Answer</h6>
+            <div class="p-2 bg-light rounded mb-2"><code>${answer}</code></div>
+            <div class="text-muted">Confidence: ${score}%</div>
         `;
     }
     

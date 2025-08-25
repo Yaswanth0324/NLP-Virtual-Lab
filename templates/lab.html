@@ -161,6 +161,7 @@
                                 data-text="big large huge small tiny little fast quick rapid slow sluggish">
                                 Adjectives (Synonyms/Antonyms)
                             </button>
+                            
                             {% elif module_name == 'text_generation' %}
                             <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
                                 data-text="Once upon a time in a small village, a young boy discovered">
@@ -177,6 +178,37 @@
                             <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
                                 data-text="Write a Python function to check if a number is prime:">
                                 Code Prompt
+                            </button>
+                            {% elif module_name == 'question_answering' %}
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Artificial Intelligence (AI) is a branch of computer science that aims to create machines capable of performing tasks that typically require human intelligence. These tasks include learning, reasoning, problem-solving, perception, and language understanding. AI systems can be categorized into narrow AI, which is designed for specific tasks like image recognition or chess playing, and general AI, which would have human-like cognitive abilities across various domains. Machine learning, a subset of AI, enables computers to learn and improve from experience without being explicitly programmed for every scenario."
+                                data-questions='["What is Artificial Intelligence?", "What tasks can AI systems perform?", "What is the difference between narrow AI and general AI?", "What is machine learning?", "How do machine learning systems improve?"]'>
+                                Artificial Intelligence
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Climate change refers to long-term shifts in global temperatures and weather patterns. While climate variations are natural, human activities have been the main driver of climate change since the 1800s, primarily through burning fossil fuels like coal, oil, and gas. This releases greenhouse gases such as carbon dioxide into the atmosphere, which trap heat from the sun and cause global temperatures to rise. The effects include melting ice caps, rising sea levels, extreme weather events, and disruptions to ecosystems and agriculture."
+                                data-questions='["What is climate change?", "What is the main cause of recent climate change?", "Which gases contribute to the greenhouse effect?", "What are some effects of climate change?", "Since when have human activities been the main driver of climate change?"]'>
+                                Climate Change
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The human brain is the most complex organ in the body, containing approximately 86 billion neurons that communicate through electrical and chemical signals. It is divided into several regions, each responsible for different functions. The cerebrum, the largest part, handles conscious thought, memory, and voluntary movements. The cerebellum coordinates balance and movement, while the brainstem controls vital functions like breathing and heart rate. The brain consumes about 20% of the body's total energy despite weighing only about 2% of body weight."
+                                data-questions='["How many neurons are in the human brain?", "What is the largest part of the brain called?", "What does the cerebellum control?", "What functions does the brainstem control?", "How much energy does the brain consume?"]'>
+                                Human Brain
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Renewable energy comes from natural sources that are constantly replenished, such as sunlight, wind, rain, tides, waves, and geothermal heat. Unlike fossil fuels, renewable energy sources produce little to no greenhouse gas emissions during operation. Solar power harnesses energy from the sun using photovoltaic cells or solar thermal systems. Wind power uses turbines to convert kinetic energy from moving air into electricity. Hydroelectric power generates electricity from flowing water, while geothermal energy taps into heat from the Earth's core."
+                                data-questions='["What are renewable energy sources?", "How do renewable energy sources differ from fossil fuels?", "How does solar power work?", "What does wind power convert into electricity?", "What is geothermal energy?"]'>
+                                Renewable Energy
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="The Internet is a global network of interconnected computers that communicate using standardized protocols. It was originally developed in the 1960s as ARPANET, a project funded by the U.S. Department of Defense. The World Wide Web, created by Tim Berners-Lee in 1989, made the Internet accessible to the general public by providing a user-friendly way to access and share information. Today, the Internet connects billions of devices worldwide and has revolutionized communication, commerce, education, and entertainment."
+                                data-questions='["What is the Internet?", "What was the original name of the Internet?", "Who created the World Wide Web?", "When was the World Wide Web created?", "How has the Internet impacted society?"]'>
+                                The Internet
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 
+                                data-text="Space exploration began in the mid-20th century with the launch of artificial satellites. The Soviet Union achieved several early milestones, including launching Sputnik 1 in 1957 and sending Yuri Gagarin as the first human into space in 1961. The United States responded with the Apollo program, successfully landing Neil Armstrong and Buzz Aldrin on the Moon in 1969. Modern space exploration includes robotic missions to Mars, the International Space Station, and private companies like SpaceX developing reusable rockets to reduce the cost of space travel."
+                                data-questions='["When did space exploration begin?", "What was the first artificial satellite?", "Who was the first human in space?", "When did humans first land on the Moon?", "What are some modern developments in space exploration?"]'>
+                                Space Exploration
                             </button>
                             {% else %}
                             <button class="btn btn-sm btn-outline-info me-2 mb-2 example-btn" 

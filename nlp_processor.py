@@ -634,6 +634,22 @@ class NLPProcessor:
             logging.error(f"Text generation failed: {e}")
             return {'error': f'Text generation failed: {str(e)}'}
 
+    
+    def question_answer(self, question, context):
+        """
+        Answer a question given a context using a pre-trained QA model.
+        :param question: The question string
+        :param context: The context string
+        :return: dict with answer and score
+        """
+        try:
+            from transformers import pipeline
+            qa_pipeline = pipeline("question-answering", model="distilbert-base-cased-distilled-squad")
+            result = qa_pipeline(question=question, context=context)
+            return {'answer': result['answer'], 'score': result['score']}
+        except Exception as e:
+            return {'error': f'Question answering failed: {str(e)}'}
+            
     def get_quiz_questions(self, module_name):
         conn = None
         try:
