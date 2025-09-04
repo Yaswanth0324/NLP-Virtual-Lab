@@ -60,6 +60,11 @@ def register_routes(app, db):
             'title': 'Topic Modelling',
             'description': 'Discover latent topics with LDA',
             'icon': 'book-open'
+        },
+        'speech_processing': {
+            'title': 'Speech Processing',
+            'description': 'Practice Speech-to-Text and Text-to-Speech in browser',
+            'icon': 'mic'
         }
     }
     
@@ -222,6 +227,11 @@ LAB_MODULES = {
         'title': 'Topic Modelling',
         'description': 'Discover latent topics with LDA',
         'icon': 'book-open'
+    },
+    'speech_processing': {
+        'title': 'Speech Processing',
+        'description': 'Practice Speech-to-Text and Text-to-Speech in browser',
+        'icon': 'mic'
     }
 }
 

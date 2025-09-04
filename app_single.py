@@ -330,7 +330,8 @@ LAB_MODULES = {
     'text_summarization': {'title': 'Text Summarization', 'description': 'Generate concise summaries of long text', 'icon': 'file-text'},
     'text_generation': {'title': 'Text Generation', 'description': 'Generate text continuations from prompts', 'icon': 'type'},
     'topic_modelling': {'title': 'Topic Modelling', 'description': 'Discover latent topics with LDA', 'icon': 'book-open'},
-    'question_answering': {'title': 'Question Answering', 'description': 'Find answers from context passages', 'icon': 'help-circle'}
+    'question_answering': {'title': 'Question Answering', 'description': 'Find answers from context passages', 'icon': 'help-circle'},
+    'speech_processing': {'title': 'Speech Processing', 'description': 'Practice Speech-to-Text and Text-to-Speech in browser', 'icon': 'mic'}
 }
 
 # Routes

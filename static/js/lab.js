@@ -52,6 +52,7 @@ class LabManager {
         this.setupTextGenerationControlsIfNeeded();
         this.setupTopicModellingExamplesIfNeeded();
         this.setupQuestionAnsweringControlsIfNeeded();
+        this.setupSpeechProcessingControlsIfNeeded();
     }
     
     setupOperationOptions() {
@@ -110,6 +111,10 @@ class LabManager {
             ],
             'question_answering': [
                 { value: 'question_answer', label: 'Question Answering' }
+            ],
+            'speech_processing': [
+                { value: 'text_to_speech', label: 'Text-to-Speech (TTS)' },
+                { value: 'speech_to_text', label: 'Speech-to-Text (STT)' }
             ]
         };
         
@@ -294,6 +299,37 @@ class LabManager {
                     <li><strong>Output:</strong> Extracted answer text and a confidence score.</li>
                 </ul>
                 <p class="text-muted">Tip: Use factual passages (e.g., Wikipedia-like text) for best results.</p>
+            `,
+            'speech_processing': `
+                <h6>Understanding Speech Processing</h6>
+                <p>Speech Processing connects human voice with text by using two inverse operations:</p>
+                <ul>
+                    <li><strong>Speech-to-Text (STT):</strong> Converts spoken audio from your microphone into written text in real time.</li>
+                    <li><strong>Text-to-Speech (TTS):</strong> Converts the text you type into natural-sounding speech using a chosen voice.</li>
+                </ul>
+                <h6 class="mt-3">How it works in your browser</h6>
+                <ul>
+                    <li><strong>STT:</strong> Uses the Web Speech API (SpeechRecognition) to stream audio from your mic, detect words, and produce <em>interim</em> (live) and <em>final</em> results. Interim text can change as recognition improves; final text is stable.</li>
+                    <li><strong>TTS:</strong> Uses the Speech Synthesis API to pick a system-installed voice, then reads your text aloud with adjustable <em>rate</em>, <em>pitch</em>, and <em>volume</em>.</li>
+                </ul>
+                <h6 class="mt-3">When to use which</h6>
+                <ul>
+                    <li><strong>Use STT</strong> to dictate notes, transcribe short explanations, or capture quick ideas without typing.</li>
+                    <li><strong>Use TTS</strong> to listen to passages, check pronunciation and pacing, or make content more accessible.</li>
+                </ul>
+                <h6 class="mt-3">Tips for best results</h6>
+                <ul>
+                    <li>Use a quiet environment and speak clearly and steadily for STT.</li>
+                    <li>Choose the recognition <strong>language</strong> that matches how you will speak (e.g., en-US, hi-IN).</li>
+                    <li>On TTS, experiment with <strong>voice</strong>, <strong>rate</strong>, and <strong>pitch</strong> to match your preference.</li>
+                </ul>
+                <h6 class="mt-3">Browser support and security</h6>
+                <ul>
+                    <li>STT works best in Chromium-based browsers (Chrome/Edge). Support varies in others.</li>
+                    <li>Microphone requires a <strong>secure context</strong> (HTTPS) or <strong>localhost</strong> (127.0.0.1).</li>
+                    <li>Allow mic permission when prompted and select the correct input device.</li>
+                </ul>
+                <p class="text-muted">This lab runs entirely in the browser—no audio is sent to your server by default.</p>
             `
         };
         
@@ -305,9 +341,26 @@ class LabManager {
         const text = this.inputText.value.trim();
         const operation = this.operation.value;
         
-        if (!text) {
+        // Allow empty text when using Speech-to-Text in Speech Processing lab
+        if (!text && !(this.moduleName === 'speech_processing' && operation === 'speech_to_text')) {
             showAlert('Please enter some text to process.', 'warning');
             return;
+        }
+
+        // Handle client-side operations for Speech Processing
+        if (this.moduleName === 'speech_processing') {
+            if (operation === 'text_to_speech') {
+                this.speechSpeak(text);
+                this.results.innerHTML = '<div class="alert alert-info">Speaking the provided text using the selected voice.</div>';
+                updateIcons();
+                return;
+            }
+            if (operation === 'speech_to_text') {
+                this.startSpeechRecognition();
+                this.results.innerHTML = '<div class="alert alert-info">Recording started. Speak into your microphone. Click Stop to finish and insert the text.</div>';
+                updateIcons();
+                return;
+            }
         }
         
         this.showSpinner();
@@ -779,6 +832,391 @@ class LabManager {
             </div>
         `;
         wrapper.parentElement.insertBefore(questionsWrapper, wrapper.nextSibling);
+    }
+
+    // --- Speech Processing (TTS/STT) Controls ---
+    setupSpeechProcessingControlsIfNeeded() {
+        if (this.moduleName !== 'speech_processing') return;
+        const operationSelect = document.getElementById('operationSelect');
+        if (!operationSelect) return;
+
+        const container = document.createElement('div');
+        container.id = 'speechControls';
+        container.className = 'mt-3';
+        container.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <div id="ttsControls" class="mb-3" style="display:none;">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Voice</label>
+                                <select id="ttsVoiceSelect" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Voice filter (lang or name)</label>
+                                <input id="ttsVoiceFilter" class="form-control" placeholder="e.g., en, hi, te" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Rate</label>
+                                <input id="ttsRate" class="form-range" type="range" min="0.5" max="2" step="0.1" value="1" />
+                                <div class="small text-muted">Current: <span id="ttsRateVal">1.0</span></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Pitch</label>
+                                <input id="ttsPitch" class="form-range" type="range" min="0" max="2" step="0.1" value="1" />
+                                <div class="small text-muted">Current: <span id="ttsPitchVal">1.0</span></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Volume</label>
+                                <input id="ttsVolume" class="form-range" type="range" min="0" max="1" step="0.05" value="1" />
+                                <div class="small text-muted">Current: <span id="ttsVolumeVal">1.00</span></div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button id="btnTTSSpeak" type="button" class="btn btn-primary"><i data-feather="play"></i> Speak</button>
+                            <button id="btnTTSStop" type="button" class="btn btn-outline-danger"><i data-feather="square"></i> Stop</button>
+                            <button id="btnTTSPreview" type="button" class="btn btn-outline-secondary"><i data-feather="headphones"></i> Preview Voice</button>
+                        </div>
+                        <div id="ttsSupport" class="mt-2 small"></div>
+                    </div>
+
+                    <div id="sttControls" style="display:none;">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Recognition language</label>
+                                <select id="sttLangSelect" class="form-select">
+                                    <option value="en-US">English (US) - en-US</option>
+                                    <option value="en-GB">English (UK) - en-GB</option>
+                                    <option value="hi-IN">Hindi (India) - hi-IN</option>
+                                    <option value="te-IN">Telugu (India) - te-IN</option>
+                                    <option value="ta-IN">Tamil (India) - ta-IN</option>
+                                    <option value="bn-IN">Bengali (India) - bn-IN</option>
+                                    <option value="mr-IN">Marathi (India) - mr-IN</option>
+                                    <option value="gu-IN">Gujarati (India) - gu-IN</option>
+                                    <option value="kn-IN">Kannada (India) - kn-IN</option>
+                                    <option value="ml-IN">Malayalam (India) - ml-IN</option>
+                                    <option value="pa-IN">Punjabi (India) - pa-IN</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check mt-4">
+                                    <input id="sttContinuousToggle" class="form-check-input" type="checkbox" checked />
+                                    <label class="form-check-label" for="sttContinuousToggle">Continuous</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check mt-4">
+                                    <input id="sttInterimToggle" class="form-check-input" type="checkbox" checked />
+                                    <label class="form-check-label" for="sttInterimToggle">Interim</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <button id="btnSTTStart" type="button" class="btn btn-success"><i data-feather="mic"></i> Start Recording</button>
+                            <button id="btnSTTStop" type="button" class="btn btn-outline-danger" disabled><i data-feather="square"></i> Stop</button>
+                            <button id="btnSTTClear" type="button" class="btn btn-outline-secondary"><i data-feather="trash-2"></i> Clear</button>
+                            <span id="sttStatusBadge" class="badge bg-secondary ms-auto">Idle</span>
+                        </div>
+                        <div class="small text-muted mb-1">Transcript (also copied into the main input when stopped)</div>
+                        <div id="sttTranscript" class="form-control" style="min-height: 100px;"></div>
+                        <div id="sttSupport" class="mt-2 small"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        operationSelect.parentElement.insertBefore(container, operationSelect.nextSibling);
+        updateIcons();
+
+        const updateVisibility = () => {
+            const op = this.operation.value;
+            const showTTS = (op === 'text_to_speech');
+            const showSTT = (op === 'speech_to_text');
+            document.getElementById('ttsControls').style.display = showTTS ? '' : 'none';
+            document.getElementById('sttControls').style.display = showSTT ? '' : 'none';
+
+            // Hide the main input and main process/clear controls when STT is selected
+            const inputWrapper = this.inputText ? this.inputText.parentElement : null;
+            const controlsWrapper = this.processBtn ? this.processBtn.parentElement : null;
+            if (inputWrapper) inputWrapper.style.display = showSTT ? 'none' : '';
+            if (controlsWrapper) controlsWrapper.style.display = showSTT ? 'none' : '';
+
+            // Hide only the main Process button when TTS is selected (keep Clear visible)
+            if (this.processBtn) this.processBtn.style.display = showTTS ? 'none' : '';
+
+            // Hide the Example Texts card when STT is selected
+            const examples = document.querySelector('.example-texts');
+            if (examples) {
+                const examplesCard = examples.closest('.card') || examples;
+                examplesCard.style.display = showSTT ? 'none' : '';
+            }
+            // Hide the transcript area under the microphone when STT is selected (output will show in Results)
+            const transcriptDiv = document.getElementById('sttTranscript');
+            if (transcriptDiv) {
+                transcriptDiv.style.display = showSTT ? 'none' : '';
+                const label = transcriptDiv.previousElementSibling;
+                if (label && label.classList && label.classList.contains('small')) {
+                    label.style.display = showSTT ? 'none' : '';
+                }
+            }
+
+            updateIcons();
+        };
+        this.operation.addEventListener('change', updateVisibility);
+        updateVisibility();
+
+        // Initialize TTS and STT subsystems
+        this._initTTS();
+        this._initSTT();
+    }
+
+    _initTTS() {
+        this.ttsVoices = [];
+        const support = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+        const supportDiv = document.getElementById('ttsSupport');
+        if (supportDiv) supportDiv.innerHTML = support ? '<span class="badge bg-success">TTS supported</span>' : '<span class="badge bg-danger">TTS not supported in this browser</span>';
+        if (!support) return;
+
+        const populate = () => {
+            this.ttsVoices = window.speechSynthesis.getVoices().slice();
+            const select = document.getElementById('ttsVoiceSelect');
+            if (!select) return;
+            const filter = (document.getElementById('ttsVoiceFilter')?.value || '').toLowerCase();
+            select.innerHTML = '';
+            const filtered = this.ttsVoices.filter(v => !filter || v.lang.toLowerCase().includes(filter) || (v.name || '').toLowerCase().includes(filter));
+            filtered.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.textContent = `${v.name} — ${v.lang}${v.default ? ' (default)' : ''}`;
+                select.appendChild(opt);
+            });
+            if (select.options.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'No voices available';
+                select.appendChild(opt);
+            }
+        };
+
+        populate();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = populate;
+        }
+
+        const rate = document.getElementById('ttsRate');
+        const pitch = document.getElementById('ttsPitch');
+        const volume = document.getElementById('ttsVolume');
+        const rateVal = document.getElementById('ttsRateVal');
+        const pitchVal = document.getElementById('ttsPitchVal');
+        const volumeVal = document.getElementById('ttsVolumeVal');
+        if (rate) rate.addEventListener('input', () => rateVal.textContent = Number(rate.value).toFixed(1));
+        if (pitch) pitch.addEventListener('input', () => pitchVal.textContent = Number(pitch.value).toFixed(1));
+        if (volume) volume.addEventListener('input', () => volumeVal.textContent = Number(volume.value).toFixed(2));
+
+        const btnSpeak = document.getElementById('btnTTSSpeak');
+        const btnStop = document.getElementById('btnTTSStop');
+        const btnPreview = document.getElementById('btnTTSPreview');
+        if (btnSpeak) btnSpeak.addEventListener('click', () => this.speechSpeak(this.inputText.value));
+        if (btnStop) btnStop.addEventListener('click', () => this.speechStopSpeak());
+        if (btnPreview) btnPreview.addEventListener('click', () => this.speechSpeak('This is a short voice preview.'));
+    }
+
+    speechSpeak(text) {
+        const support = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+        if (!support) {
+            showAlert('Text-to-Speech is not supported in this browser.', 'danger');
+            return;
+        }
+        const trimmed = (text || '').trim();
+        if (!trimmed) {
+            showAlert('Enter some text to speak.', 'warning');
+            return;
+        }
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(trimmed);
+        const select = document.getElementById('ttsVoiceSelect');
+        const rate = document.getElementById('ttsRate');
+        const pitch = document.getElementById('ttsPitch');
+        const volume = document.getElementById('ttsVolume');
+        const voices = window.speechSynthesis.getVoices();
+        const chosen = Array.from((select || {}).options || []).find(o => o.selected);
+        if (chosen) {
+            const v = voices.find(v => v.name === chosen.value);
+            if (v) utt.voice = v;
+        }
+        utt.rate = Number(rate?.value || 1);
+        utt.pitch = Number(pitch?.value || 1);
+        utt.volume = Number(volume?.value || 1);
+        window.speechSynthesis.speak(utt);
+    }
+
+    speechStopSpeak() {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
+
+    _initSTT() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const supportDiv = document.getElementById('sttSupport');
+        const supported = !!SR;
+        if (supportDiv) supportDiv.innerHTML = supported ? '<span class="badge bg-success">STT supported</span>' : '<span class="badge bg-danger">STT not supported in this browser</span>';
+        if (!supported) return;
+
+        this.recognition = new SR();
+        this.recognizing = false;
+        this.recognition.continuous = true;
+        this.recognition.interimResults = true;
+        this.recognition.lang = (document.getElementById('sttLangSelect')?.value) || 'en-US';
+
+        this.recognition.onstart = () => {
+            this.recognizing = true;
+            const b = document.getElementById('sttStatusBadge');
+            if (b) b.textContent = 'Listening';
+            const start = document.getElementById('btnSTTStart');
+            const stop = document.getElementById('btnSTTStop');
+            if (start) start.disabled = true;
+            if (stop) stop.disabled = false;
+        };
+        this.recognition.onerror = (e) => {
+            const b = document.getElementById('sttStatusBadge');
+            if (b) b.textContent = 'Error';
+            const msg = this._sttExplainError(e && e.error);
+            const sup = document.getElementById('sttSupport');
+            if (sup) {
+                sup.innerHTML = `<span class="badge bg-danger">STT error</span> ${msg}`;
+            }
+            console.error('STT error:', e);
+        };
+        this.recognition.onend = () => {
+            this.recognizing = false;
+            const b = document.getElementById('sttStatusBadge');
+            if (b) b.textContent = 'Idle';
+            const start = document.getElementById('btnSTTStart');
+            const stop = document.getElementById('btnSTTStop');
+            if (start) start.disabled = false;
+            if (stop) stop.disabled = true;
+        };
+
+        this._sttInterim = '';
+        this._sttFinal = '';
+        this.recognition.onresult = (event) => {
+            this._sttInterim = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const res = event.results[i];
+                if (res.isFinal) this._sttFinal += res[0].transcript;
+                else this._sttInterim += res[0].transcript;
+            }
+            // Show live recognized text in the Results section (not under microphone)
+            const recognizedHtml = `${this._esc(this._sttFinal)} ${this._sttInterim ? '<span class="text-muted">' + this._esc(this._sttInterim) + '</span>' : ''}`.trim();
+            this.results.innerHTML = `<h6>Speech-to-Text (Live)</h6><div class="p-2 bg-light rounded">${recognizedHtml || '<span class="text-muted">Listening...</span>'}</div>`;
+            updateIcons();
+        };
+
+        const langSel = document.getElementById('sttLangSelect');
+        const cont = document.getElementById('sttContinuousToggle');
+        const inter = document.getElementById('sttInterimToggle');
+        if (langSel) langSel.addEventListener('change', () => { if (this.recognition) this.recognition.lang = langSel.value; });
+        if (cont) cont.addEventListener('change', () => { if (this.recognition) this.recognition.continuous = !!cont.checked; });
+        if (inter) inter.addEventListener('change', () => { if (this.recognition) this.recognition.interimResults = !!inter.checked; });
+
+        const startBtn = document.getElementById('btnSTTStart');
+        const stopBtn = document.getElementById('btnSTTStop');
+        const clearBtn = document.getElementById('btnSTTClear');
+        if (startBtn) startBtn.addEventListener('click', () => this.startSpeechRecognition());
+        if (stopBtn) stopBtn.addEventListener('click', () => this.stopSpeechRecognition());
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearSpeechTranscript());
+    }
+
+    startSpeechRecognition() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR || !this.recognition) {
+            showAlert('Speech recognition is not supported in this browser.', 'danger');
+            return;
+        }
+        // Security context check (required by browsers for mic access)
+        const isLocalSecure = (window.isSecureContext === true) || ['localhost', '127.0.0.1'].includes(location.hostname);
+        if (!isLocalSecure) {
+            showAlert('Microphone access requires a secure context (HTTPS) or localhost. Open the site via https:// or http://127.0.0.1.', 'warning');
+        }
+        const start = () => {
+            // Reset previous transcript buffers and UI before new recording
+            this._sttFinal = '';
+            this._sttInterim = '';
+            const div = document.getElementById('sttTranscript');
+            if (div) div.innerHTML = '';
+            // Inform user in the Results section
+            this.results.innerHTML = '<div class="alert alert-info">Recording started. Speak into your microphone. Click Stop to finalize.</div>';
+            try { this.recognition.start(); } catch (_) { /* already started */ }
+        };
+        const md = navigator.mediaDevices;
+        if (md && typeof md.getUserMedia === 'function') {
+            md.getUserMedia({ audio: true }).then(stream => {
+                // Close stream immediately; SpeechRecognition handles capture
+                try { (stream.getTracks() || []).forEach(t => t.stop()); } catch (_) {}
+                start();
+            }).catch(err => {
+                const sup = document.getElementById('sttSupport');
+                if (sup) sup.innerHTML = `<span class="badge bg-danger">Mic error</span> ${this._sttExplainError('permission')}`;
+                showAlert('Microphone permission denied or unavailable.', 'danger');
+                console.error('getUserMedia error:', err);
+            });
+        } else {
+            start();
+        }
+    }
+
+    stopSpeechRecognition() {
+        if (this.recognition && this.recognizing) this.recognition.stop();
+        const txtDiv = document.getElementById('sttTranscript');
+        let finalText = '';
+        if (txtDiv) {
+            const stripped = txtDiv.innerText || txtDiv.textContent || '';
+            finalText = (this._sttFinal || stripped || '').trim();
+            this.inputText.value = finalText;
+        } else {
+            finalText = (this._sttFinal || '').trim();
+            this.inputText.value = finalText;
+        }
+        // Show final recognized text in Results section
+        this.results.innerHTML = `<h6>Speech-to-Text (Final)</h6><div class="p-2 bg-light rounded"><code>${this._esc(finalText)}</code></div>`;
+        updateIcons();
+    }
+
+    clearSpeechTranscript() {
+        const div = document.getElementById('sttTranscript');
+        if (div) div.innerHTML = '';
+        this.inputText.value = '';
+        // Reset recognition buffers so previous text does not reappear
+        this._sttFinal = '';
+        this._sttInterim = '';
+        // Reflect cleared state in Results section
+        this.results.innerHTML = '<div class="alert alert-secondary">Transcript cleared. Click Start Recording to begin a new session.</div>';
+        updateIcons();
+    }
+
+    _esc(s) { return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+    _sttExplainError(code) {
+        switch (code) {
+            case 'not-allowed':
+            case 'service-not-allowed':
+            case 'permission':
+                return 'Microphone permission denied or blocked. Allow mic access in your browser site settings and reload.';
+            case 'no-speech':
+                return 'No speech detected. Check your microphone and try again.';
+            case 'audio-capture':
+                return 'No microphone found or it is in use by another app. Check your audio device.';
+            case 'aborted':
+                return 'Recording was aborted (user action or a new start()).';
+            case 'network':
+                return 'Network error with speech service. Check your connection and try again.';
+            case 'bad-grammar':
+            case 'language-not-supported':
+                return 'Recognition language/grammar not supported by this browser.';
+            default:
+                return 'An error occurred. Use a Chromium-based browser over HTTPS or localhost and ensure microphone permission is granted.';
+        }
     }
 
     populateQuestions(questionsJson) {

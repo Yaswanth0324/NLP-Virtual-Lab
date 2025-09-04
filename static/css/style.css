@@ -104,6 +104,16 @@
     min-height: 300px;
 }
 
+/* Ensure readable text on light blocks inside dark theme */
+.results-container .bg-light,
+.results-container .alert-secondary,
+.results-container .alert-info {
+    color: #111 !important;
+}
+
+/* Explicit helper when we force dark text on light backgrounds */
+.text-dark-on-light { color: #111 !important; }
+
 .result-item {
     padding: 1rem;
     margin-bottom: 1rem;
