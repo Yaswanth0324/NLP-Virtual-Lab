@@ -88,7 +88,10 @@ class LabManager {
                 { value: 'sentiment', label: 'Sentiment Analysis' }
             ],
             'chunking': [
-                { value: 'chunk', label: 'Noun Phrase Chunking' }
+                { value: 'chunk', label: 'Noun Phrase Chunking' },
+                { value: 'chunk_vp', label: 'Verb Phrase Chunking' },
+                { value: 'cfg_parse', label: 'CFG Parse' },
+                { value: 'cnf', label: 'Convert to CNF' }
             ],
             'text_classification': [
                 { value: 'text_classify', label: 'Text Classification' }
@@ -467,6 +470,15 @@ class LabManager {
             case 'chunk':
                 html = this.formatChunkingResults(results);
                 break;
+            case 'chunk_vp':
+                html = this.formatChunkingResults(results);
+                break;
+            case 'cfg_parse':
+                html = this.formatParseResults(results);
+                break;
+            case 'cnf':
+                html = this.formatParseResults(results);
+                break;
             case 'translate':
                 html = this.formatTranslationResults(results);
                 break;
@@ -719,8 +731,20 @@ class LabManager {
             });
             html += '</div>';
         }
+
+        if (results.verb_phrases && results.verb_phrases.length > 0) {
+            html += '<div class="verb-phrases mb-3">';
+            html += '<h6>Verb Phrases</h6>';
+            results.verb_phrases.forEach(phrase => {
+                html += `<span class="badge bg-primary me-1 mb-1">${phrase}</span>`;
+            });
+            html += '</div>';
+        }
         
-        // Parse tree is now displayed only in the visualization section
+        if (results.ascii_tree) {
+            html += '<div class="mb-2"><strong>ASCII Tree</strong></div>';
+            html += `<pre class="bg-light p-2 rounded" style="white-space: pre; overflow:auto;"><code>${this._esc(results.ascii_tree)}</code></pre>`;
+        }
         html += '<div class="alert alert-info">Parse tree visualization available in the Visualization section.</div>';
         
         return html;
@@ -1398,14 +1422,52 @@ class LabManager {
             ${items}
         `;
     }
+
+    formatParseResults(results) {
+        let html = '<h6>Parsing Results</h6>';
+        if (results.tokens) {
+            html += `<div class="mb-2"><strong>Tokens:</strong> ${results.tokens.join(' ')}</div>`;
+        }
+        if (Array.isArray(results.parse_trees) && results.parse_trees.length > 0) {
+            html += '<div class="mb-2"><strong>Top parse(s):</strong></div>';
+            results.parse_trees.forEach((t, i) => {
+                html += `<div class="p-2 bg-light rounded mb-2"><div class="small text-muted">Parse ${i+1}</div><pre class="mb-0"><code>${this._esc(t)}</code></pre></div>`;
+            });
+        }
+        if (results.original_tree) {
+            html += '<div class="mb-2"><strong>Original tree:</strong></div>';
+            html += `<div class="p-2 bg-light rounded mb-2"><pre class="mb-0"><code>${this._esc(results.original_tree)}</code></pre></div>`;
+        }
+        if (results.cnf_tree) {
+            html += '<div class="mb-2"><strong>CNF tree:</strong></div>';
+            html += `<div class="p-2 bg-light rounded mb-2"><pre class="mb-0"><code>${this._esc(results.cnf_tree)}</code></pre></div>`;
+        }
+        if (results.ascii_tree) {
+            html += '<div class="mb-2"><strong>ASCII Tree</strong></div>';
+            html += `<pre class="bg-light p-2 rounded" style="white-space: pre; overflow:auto;"><code>${this._esc(results.ascii_tree)}</code></pre>`;
+        }
+        html += '<div class="alert alert-info">Parse tree visualization available in the Visualization section.</div>';
+        return html;
+    }
+
+    createParseTree(treeStr, asciiStr) {
+        // Prefer ASCII pretty-printed tree if provided
+        const ascii = (asciiStr && typeof asciiStr === 'string' && asciiStr.trim().length > 0) ? asciiStr : treeStr;
+        this.visualization.innerHTML = `<pre class="bg-light p-2 rounded" style="white-space: pre; overflow:auto;"><code>${this._esc(ascii)}</code></pre>`;
+    }
     
     displayVisualization(results) {
         const operation = this.operation.value;
         
-        // Handle chunking parse tree visualization
-        if (operation === 'chunk') {
-            if (results.chunk_tree) {
-                this.createParseTree(results.chunk_tree);
+        // Handle parse tree visualization for chunking & parsing ops
+        if (['chunk','chunk_vp','cfg_parse','cnf'].includes(operation)) {
+            if (results.chunk_tree || results.ascii_tree) {
+                if (typeof this.createParseTree === 'function') {
+                    this.createParseTree(results.chunk_tree || '', results.ascii_tree || '');
+                } else {
+                    const ascii = results.ascii_tree || results.chunk_tree || '';
+                    this.visualization.innerHTML = '<pre class="bg-light p-2 rounded" style="white-space: pre; overflow:auto;"><code>' + this._esc(ascii) + '</code></pre>';
+                }
                 return;
             } else {
                 this.visualization.innerHTML = '<div class="alert alert-info">No parse tree available.</div>';

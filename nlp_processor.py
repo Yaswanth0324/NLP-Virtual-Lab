@@ -4,6 +4,8 @@ import re
 import string
 import random
 import json
+import copy
+import io
 from collections import Counter
 
 # --- Core NLP Libraries ---
@@ -15,6 +17,9 @@ from nltk.tag import pos_tag
 from nltk.chunk import ne_chunk
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.util import ngrams
+from nltk.treetransforms import chomsky_normal_form
+from nltk.parse import ChartParser
+from nltk.grammar import CFG
 
 # --- For Machine Learning and NLP Models ---
 import numpy as np
@@ -136,6 +141,12 @@ class NLPProcessor:
                 return self.lemmatize_text(text)
             elif operation == 'chunk':
                 return self.chunk_text(text)
+            elif operation == 'chunk_vp':
+                return self.chunk_text_vp(text)
+            elif operation == 'cfg_parse':
+                return self.cfg_parse(text)
+            elif operation == 'cnf': # ** FIX: Changed from 'cnf_transform' to 'cnf' to match the frontend **
+                return self.cnf_transform(text)
             elif operation == 'summarize':
                 return self.summarize_text(text, max_length=130, min_length=30)
             elif operation == 'generate_text':
@@ -541,10 +552,19 @@ class NLPProcessor:
                 if hasattr(chunk, 'label') and chunk.label() == 'NP':
                     phrase = ' '.join([word for word, pos in chunk])
                     noun_phrases.append(phrase)
+            # Build ASCII tree visualization
+            ascii_tree = str(chunks)
+            try:
+                s_buf = io.StringIO()
+                chunks.pretty_print(stream=s_buf)
+                ascii_tree = s_buf.getvalue()
+            except Exception:
+                pass
             return {
                 'tagged_tokens': tagged,
                 'noun_phrases': noun_phrases,
                 'chunk_tree': str(chunks),
+                'ascii_tree': ascii_tree,
                 'visualization': {'type': 'chunk_tree', 'data': str(chunks)}
             }
         except Exception as e:
@@ -555,6 +575,194 @@ class NLPProcessor:
                 'chunk_tree': ''
             }
     
+    def chunk_text_vp(self, text):
+        tokens = word_tokenize(text)
+        tagged = pos_tag(tokens)
+        grammar = r"""
+            NP: {<DT|PP\$>?<JJ>*<NN|NNS|NNP|NNPS>+}
+            PP: {<IN><NP>}
+            VP: {<MD>?<VB.*><RB.*>*<VB.*>*<NP|PP|PRP>*}
+        """
+        try:
+            cp = nltk.RegexpParser(grammar)
+            chunks = cp.parse(tagged)
+            verb_phrases = []
+            for subtree in chunks.subtrees():
+                if subtree.label() == 'VP':
+                    phrase = ' '.join([word for (word, pos) in subtree.leaves()])
+                    verb_phrases.append(phrase)
+            # Build ASCII tree visualization
+            ascii_tree = str(chunks)
+            try:
+                s_buf = io.StringIO()
+                chunks.pretty_print(stream=s_buf)
+                ascii_tree = s_buf.getvalue()
+            except Exception:
+                pass
+            return {
+                'tagged_tokens': tagged,
+                'verb_phrases': verb_phrases,
+                'chunk_tree': str(chunks),
+                'ascii_tree': ascii_tree
+            }
+        except Exception as e:
+            return {
+                'error': f'VP Chunking failed: {str(e)}',
+                'tagged_tokens': tagged,
+                'verb_phrases': [],
+                'chunk_tree': ''
+            }
+
+    def cfg_parse(self, text):
+        try:
+        # Take first sentence (CFG parsers usually work on single sentences)
+            sentences = sent_tokenize(text)
+            sentence = sentences[0] if sentences else text
+            tokens = [t.lower() for t in word_tokenize(sentence)]
+            tagged = pos_tag(tokens)
+
+        # Basic grammar skeleton
+            grammar_rules = [
+    "S -> NP VP | S CC S | INTJ NP VP",
+    "NP -> DT NN | DT JJ NN | DT JJ JJ NN | PRP | NN | NP PP",
+    "VP -> VBZ NP | VBD NP | VBP NP | VB NP | VBZ | VBD | VBP | VB | VP RB | VP PP",
+    "PP -> IN NP",
+    "INTJ -> UH",
+
+    # POS categories with example words (can be extended dynamically)
+    "RB -> 'quickly' | 'suddenly' | 'slowly'",
+    "CC -> 'and' | 'or' | 'but'",
+    "DT -> 'a' | 'an' | 'the'",
+    "PRP -> 'i' | 'he' | 'she' | 'they' | 'we'",
+    "NN -> 'book' | 'table' | 'dog' | 'singer' | 'man' | 'girl'",
+    "JJ -> 'good' | 'big' | 'small' | 'happy'",
+    "VBZ -> 'is' | 'likes'",
+    "VBD -> 'was' | 'saw' | 'liked'",
+    "VBP -> 'are' | 'eat' | 'see'",
+    "VB -> 'eat' | 'see' | 'like'",
+    "IN -> 'on' | 'in' | 'under' | 'over'",
+    "UH -> 'wow' | 'oh' | 'hey'"
+]
+
+
+
+        # POS → CFG categories
+            mapping = {
+                "NN": "NN", "NNS": "NN", "NNP": "NN", "NNPS": "NN",
+                "JJ": "JJ", "JJR": "JJ", "JJS": "JJ",
+                "VB": "VB", "VBD": "VBD", "VBP": "VBP", "VBZ": "VBZ",
+                "DT": "DT", "PRP": "PRP", "IN": "IN", "RB": "RB", "UH": "UH", "CC": "CC"
+            }
+
+        # Add terminal rules dynamically for all words in the sentence
+            for word, pos in tagged:
+                if pos in mapping:
+                    grammar_rules.append(f"{mapping[pos]} -> '{word.lower()}'")
+
+            grammar = CFG.fromstring("\n".join(grammar_rules))
+            parser = ChartParser(grammar)
+
+            trees = list(parser.parse(tokens))
+            ascii_tree = ''
+            if trees:
+                try:
+                    s_buf = io.StringIO()
+                    trees[0].pretty_print(stream=s_buf)
+                    ascii_tree = s_buf.getvalue()
+                except Exception:
+                    ascii_tree = str(trees[0])
+
+            result = {
+            'tokens': tokens,
+            'tagged_tokens': tagged,
+            'num_trees': len(trees),
+            'parse_trees': [str(t) for t in trees[:3]],
+            'chunk_tree': str(trees[0]) if trees else '',
+            'ascii_tree': ascii_tree
+            }
+            if not trees:
+                result['error'] = 'No parse found with auto-generated CFG for this sentence.'
+            return result
+        except Exception as e:
+            logging.error(f"CFG parse failed: {e}")
+            return {'error': f'CFG parse failed: {str(e)}'}
+
+    def cnf_transform(self, text, to_cnf=True):
+        try:
+            sentence = sent_tokenize(text)[0]
+            tokens = [t.lower() for t in word_tokenize(sentence)]
+            tagged = pos_tag(tokens)
+
+            # A more flexible base grammar
+            grammar_rules = [
+    "S -> NP VP | S CC S | INTJ NP VP",
+    "NP -> DT NN | DT JJ NN | DT JJ JJ NN | PRP | NN | NP PP",
+    "VP -> VBZ NP | VBD NP | VBP NP | VB NP | VBZ | VBD | VBP | VB | VP RB | VP PP",
+    "PP -> IN NP",
+    "INTJ -> UH",
+
+    # POS categories with example words (can be extended dynamically)
+    "RB -> 'quickly' | 'suddenly' | 'slowly'",
+    "CC -> 'and' | 'or' | 'but'",
+    "DT -> 'a' | 'an' | 'the'",
+    "PRP -> 'i' | 'he' | 'she' | 'they' | 'we'",
+    "NN -> 'book' | 'table' | 'dog' | 'singer' | 'man' | 'girl'",
+    "JJ -> 'good' | 'big' | 'small' | 'happy'",
+    "VBZ -> 'is' | 'likes'",
+    "VBD -> 'was' | 'saw' | 'liked'",
+    "VBP -> 'are' | 'eat' | 'see'",
+    "VB -> 'eat' | 'see' | 'like'",
+    "IN -> 'on' | 'in' | 'under' | 'over'",
+    "UH -> 'wow' | 'oh' | 'hey'"
+]
+
+
+
+        # POS → CFG categories
+            pos_map = {
+                "NN": "NN", "NNS": "NN", "NNP": "NN", "NNPS": "NN",
+                "JJ": "JJ", "JJR": "JJ", "JJS": "JJ",
+                "VB": "VB", "VBD": "VBD", "VBP": "VBP", "VBZ": "VBZ",
+                "DT": "DT", "PRP": "PRP", "IN": "IN", "RB": "RB", "UH": "UH", "CC": "CC"
+            }
+
+            for word, tag in tagged:
+                if tag in pos_map:
+                    rule = f"{pos_map[tag]} -> '{word}'"
+                    if rule not in grammar_rules: grammar_rules.append(rule)
+            
+            grammar = CFG.fromstring("\n".join(grammar_rules))
+            parser = ChartParser(grammar)
+            trees = list(parser.parse(tokens))
+
+            if not trees:
+                return {'error': 'Could not parse the sentence with the dynamic grammar.', 'tokens': tokens}
+            
+            original_tree = trees[0]
+            result_tree = original_tree
+            
+            if to_cnf:
+                cnf_tree = copy.deepcopy(original_tree)
+                chomsky_normal_form(cnf_tree)
+                result_tree = cnf_tree
+            
+            ascii_tree = ""
+            try:
+                s_buf = io.StringIO()
+                result_tree.pretty_print(stream=s_buf)
+                ascii_tree = s_buf.getvalue()
+            except: ascii_tree = str(result_tree)
+
+            return {
+                'tokens': tokens,
+                'original_tree': str(original_tree),
+                'final_tree': str(result_tree), # Generic key for both CFG and CNF
+                'chunk_tree': str(result_tree),
+                'ascii_tree': ascii_tree
+            }
+        except Exception as e:
+            return {'error': f'Parsing failed: {e}'}
+
     def translate_text(self, text, src_lang='auto', dest_lang='en'):
         """Translate text using googletrans.
         :param text: Text to translate
@@ -610,8 +818,8 @@ class NLPProcessor:
         return self._text_generator
 
     def generate_text(self, prompt, max_new_tokens=50, num_return_sequences=1,
-                      do_sample=True, top_k=50, top_p=0.95,
-                      temperature=0.9, repetition_penalty=1.2):
+                        do_sample=True, top_k=50, top_p=0.95,
+                        temperature=0.9, repetition_penalty=1.2):
         if not prompt or not prompt.strip():
             return {'error': 'No prompt provided.'}
         try:
