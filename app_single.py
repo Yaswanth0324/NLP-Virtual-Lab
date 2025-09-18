@@ -348,10 +348,6 @@ def favicon_png():
 def favicon_ico():
     return send_from_directory(os.path.join(app.root_path, 'images'), 'nlp-logo.png', mimetype='image/png')
 
-@app.route('/readme')
-def readme():
-    return render_template('readme.html')
-
 @app.route('/chatbot')
 def chatbot():
     return render_template('chatbot.html')

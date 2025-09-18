@@ -137,34 +137,68 @@
         </div>
 
         <!-- Statistics Section -->
-        <div class="stats-section text-center py-4">
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="stat-item">
-                        <h3 class="stat-number">14</h3>
-                        <p class="stat-label">Lab Modules</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-item">
-                        <h3 class="stat-number">25+</h3>
-                        <p class="stat-label">Interactive Exercises</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-item">
-                        <h3 class="stat-number">20+</h3>
-                        <p class="stat-label">Quiz Questions</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-item">
-                        <h3 class="stat-number">∞</h3>
-                        <p class="stat-label">Learning Possibilities</p>
-                    </div>
-                </div>
+<div class="stats-section text-center py-4">
+    <div class="row">
+
+        <!-- Structured Data (JSON-LD) -->
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "WebSite",
+                    "name": "NLP Virtual Lab",
+                    "url": "{{ url_for('index', _external=True) }}",
+                    "description": "Interactive NLP tutorials, labs, quizzes and visualizations for students learning natural language processing.",
+                    "keywords": ["NLP", "Natural Language Processing", "machine learning", "AI labs", "text preprocessing", "POS tagging", "NER", "sentiment analysis"]
+                },
+                {
+                    "@type": "EducationalOrganization",
+                    "name": "NLP Virtual Lab",
+                    "url": "{{ url_for('index', _external=True) }}"
+                }
+            ]
+        }
+        </script>
+
+        <!-- Visually hidden descriptive summary for SEO + accessibility -->
+        <p class="visually-hidden">
+            NLP Virtual Lab provides interactive Natural Language Processing modules, hands-on exercises, quizzes, and visual demonstrations covering text preprocessing, POS tagging, NER, sentiment analysis, embeddings, translation, summarization, and more.
+        </p>
+
+        <!-- Stat Item 1 -->
+        <div class="col-md-3">
+            <div class="stat-item" itemscope itemtype="https://schema.org/CreativeWork" role="region" aria-label="Number of lab modules">
+                <h3 class="stat-number" itemprop="interactionCount">14</h3>
+                <p class="stat-label" itemprop="name">Lab Modules</p>
             </div>
         </div>
+
+        <!-- Stat Item 2 -->
+        <div class="col-md-3">
+            <div class="stat-item" itemscope itemtype="https://schema.org/CreativeWork" role="region" aria-label="Interactive exercises available">
+                <h3 class="stat-number" itemprop="interactionCount">25+</h3>
+                <p class="stat-label" itemprop="name">Interactive Exercises</p>
+            </div>
+        </div>
+
+        <!-- Stat Item 3 -->
+        <div class="col-md-3">
+            <div class="stat-item" itemscope itemtype="https://schema.org/CreativeWork" role="region" aria-label="Quiz questions count">
+                <h3 class="stat-number" itemprop="interactionCount">20+</h3>
+                <p class="stat-label" itemprop="name">Quiz Questions</p>
+            </div>
+        </div>
+
+        <!-- Stat Item 4 -->
+        <div class="col-md-3">
+            <div class="stat-item" itemscope itemtype="https://schema.org/CreativeWork" role="region" aria-label="Learning possibilities">
+                <h3 class="stat-number" itemprop="interactionCount">∞</h3>
+                <p class="stat-label" itemprop="name">Learning Possibilities</p>
+            </div>
+        </div>
+
     </div>
 </div>
+
 {% endblock %}
