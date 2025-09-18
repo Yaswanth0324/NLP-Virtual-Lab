@@ -7,11 +7,13 @@ import json
 import random
 from transformers import pipeline
 
+
 # --- New Imports for .env file and DB connection ---
 # Make sure to install the required libraries:
 # pip install python-dotenv google-generativeai requests psycopg2-binary
 from dotenv import load_dotenv
 import psycopg2 # For connecting to PostgreSQL
+import audioop 
 
 try:
     import requests
