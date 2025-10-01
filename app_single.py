@@ -14,6 +14,7 @@ from transformers import pipeline
 from dotenv import load_dotenv
 import psycopg2 # For connecting to PostgreSQL
 import audioop 
+import torch 
 
 try:
     import requests
@@ -46,7 +47,6 @@ def get_summarizer():
     global _summarizer
     if _summarizer is None:
         try:
-            import torch  # Ensure PyTorch is available
             _summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", framework="pt")
         except Exception:
             # Fallback to default initialization (may require TensorFlow with tf-keras)
@@ -83,12 +83,6 @@ def get_text_generator():
 
     return _text_generator
 
-# QA moved to nlp_processor.NLPProcessor
-
-# --- Database configuration is now handled directly in the route ---
-
-
-# --- Start of Updated Chatbot Code ---
 
 def search_internet(query):
     """
@@ -147,7 +141,7 @@ def generate_gemini_response(query, context):
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         lower_query = query.lower()
         requested_language = 'Python'
@@ -312,12 +306,6 @@ def question_answering():
         logging.exception('QA endpoint failed')
         return jsonify({'error': f'QA failed: {str(e)}'}), 200
 
-
-# --- MODELS REMOVED ---
-# The User, UserProgress, and QuizQuestion SQLAlchemy models have been removed.
-# The application will now connect directly to the database when needed.
-
-
 # Lab modules configuration
 LAB_MODULES = {
     'text_preprocessing': {'title': 'Text Preprocessing', 'description': 'Learn tokenization, lowercasing, punctuation removal, and stopword removal', 'icon': 'file-text'},
@@ -450,8 +438,6 @@ def get_quiz_questions(module_name):
 def test():
     return "Flask app is working! Routes are properly registered."
 
-# --- db.create_all() REMOVED ---
-# Since we are not using SQLAlchemy models, we no longer need to create tables.
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
