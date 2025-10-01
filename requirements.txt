@@ -10,3 +10,7 @@ torch==2.5.0
 scikit-learn
 googletrans==4.0.0-rc1
 numpy
+transformers==4.38.0
+tokenizers==0.15.2
+torch==2.2.0
+Werkzeug>=3.0.0
