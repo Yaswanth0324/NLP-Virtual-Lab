@@ -6,11 +6,6 @@ from datetime import datetime
 import json
 import random
 from transformers import pipeline
-
-
-# --- New Imports for .env file and DB connection ---
-# Make sure to install the required libraries:
-# pip install python-dotenv google-generativeai requests psycopg2-binary
 from dotenv import load_dotenv
 import psycopg2 # For connecting to PostgreSQL
 import audioop 
@@ -27,8 +22,6 @@ try:
 except ImportError:
     genai = None
     google_ai_available = False
-# --- End of New Imports ---
-
 # Load environment variables from .env file
 load_dotenv()
 
@@ -83,6 +76,7 @@ def get_text_generator():
 
     return _text_generator
 
+# ---------------- Chatbot Updated Section ---------------- #
 
 def search_internet(query):
     """
@@ -90,7 +84,7 @@ def search_internet(query):
     """
     if not requests:
         logging.warning("The 'requests' library is not installed. Internet search is disabled.")
-        return "Internet search is unavailable because the 'requests' library is missing."
+        return ""
 
     try:
         search_url = "https://api.duckduckgo.com/"
@@ -113,110 +107,37 @@ def search_internet(query):
             if topic.get("Text"):
                 results.append(topic["Text"])
 
-        if not results:
-            return "I couldn't find any direct information on that topic. Could you try rephrasing the question?"
-            
-        return " ".join(results[:3])
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error during internet search: {e}")
-        return "Sorry, I'm having trouble connecting to the internet right now."
+        return " ".join(results[:3]) if results else ""
     except Exception as e:
-        logging.error(f"An unexpected error occurred during search: {e}")
-        return "An unexpected error occurred while searching."
-
+        logging.error(f"Search error: {e}")
+        return ""
 
 def generate_gemini_response(query, context):
     """
-    Generates a response using the Google Gemini API, based on the provided context.
+    Generates a response using the Google Gemini API.
     """
     if not google_ai_available:
-        return "The Google AI backend is not installed. Please run 'pip install google-generativeai'."
+        return "Google AI backend not installed."
 
     api_key = os.environ.get("GEMINI_API_KEY")
-
     if not api_key:
-        logging.warning("Gemini API key not found in .env file. Using fallback response.")
-        return "The AI assistant is not configured. Please provide a Gemini API key in a .env file."
+        return "Gemini API key missing. Please set GEMINI_API_KEY."
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
-        lower_query = query.lower()
-        requested_language = 'Python'
-        if 'javascript' in lower_query or ' js ' in f' {lower_query} ' or 'node.js' in lower_query:
-            requested_language = 'JavaScript'
-        elif 'java' in lower_query:
-            requested_language = 'Java'
-        elif 'c++' in lower_query or 'cpp' in lower_query:
-            requested_language = 'C++'
-        elif ' r ' in f' {lower_query} ':
-            requested_language = 'R'
+        # Use a supported model (fixes Render 404 issue)
+        model = genai.GenerativeModel("gemini-2.0-flash")
 
-        is_code_request = 'code' in lower_query or 'implement' in lower_query or 'snippet' in lower_query
-        is_explanation_request = 'explain' in lower_query or 'what is' in lower_query or 'describe' in lower_query or 'how does' in lower_query
-        is_code_only_request = 'only code' in lower_query or 'just the code' in lower_query
-        
-        prompt = ""
-        language_specific_instruction = ""
-        if requested_language == 'JavaScript':
-            language_specific_instruction = "The JavaScript code should be modern and functional, suitable for a Node.js environment. Provide standalone functions where possible. If a common library is standard for the task (e.g., from npm), mention the package and show its usage."
-
-        if is_code_only_request:
-            prompt = f"""You are a code generation assistant.
-Provide ONLY the {requested_language} code for the following query in a single markdown code block. {language_specific_instruction}
-Do NOT add any explanation, introduction, or conclusion.
-
-User's Query: "{query}"
+        prompt = f"""
+You are an NLP assistant. Answer the user clearly and helpfully.
+Search Context: {context}
+User Query: {query}
 """
-        elif is_code_request and not is_explanation_request:
-                prompt = f"""You are a code generation assistant.
-Provide a functional {requested_language} code example for the user's query. {language_specific_instruction}
-Use the search context for guidance, but generate a standard, working example even if the context is sparse.
-Enclose the code in a single markdown code block. Do not add long explanations before or after the code.
-
-Search Context: "{context}"
-User's Query: "{query}"
-"""
-        elif is_explanation_request and not is_code_request:
-            prompt = f"""You are an NLP expert. The user is asking for an explanation.
-Based on the provided search context, provide a detailed explanation for the user's query.
-Use markdown for formatting (bolding, bullet points).
-If the user asks for an "example", provide a clear, textual example, not a code snippet.
-Do NOT include any code examples.
-
-Search Context: "{context}"
-User's Query: "{query}"
-"""
-        else:
-            prompt = f"""You are an expert NLP assistant. Your goal is to provide a direct, helpful, and well-structured answer.
-
-**Instructions:**
-1.  Start with a clear, concise explanation of the topic requested by the user.
-2.  After the explanation, provide a functional code example in **{requested_language}**. {language_specific_instruction}
-3.  Use markdown for formatting (bolding, bullet points, and code blocks).
-4.  Do not apologize or say you cannot provide an answer. Use the context to formulate the best possible response.
-
----
-**Search Context:**
-{context}
----
-
-**User's Query:**
-{query}
----
-
-**Your Expert Answer:**
-"""
-
         response = model.generate_content(prompt)
         return response.text.strip()
-
     except Exception as e:
-        logging.error(f"Error generating Gemini response: {e}")
-        return f"Sorry, I encountered an API error: {str(e)}"
-
+        logging.error(f"Gemini error: {e}")
+        return f"Error from Gemini API: {str(e)}"
 
 @app.route('/api/chatbot', methods=['POST'])
 def chatbot_api():
@@ -231,8 +152,13 @@ def chatbot_api():
         if not message:
             return jsonify({'error': 'Message is required'}), 400
 
+        # Get search context
         search_context = search_internet(message)
+        logging.debug(f"[CHATBOT] Search context: {search_context}")
+
+        # Get Gemini response
         final_response = generate_gemini_response(message, search_context)
+        logging.debug(f"[CHATBOT] Final response: {final_response}")
 
         return jsonify({'response': final_response, 'session_id': session_id})
         
@@ -240,7 +166,7 @@ def chatbot_api():
         logging.error(f"Error in chatbot API: {str(e)}")
         return jsonify({'error': f"Server Error: {str(e)}"}), 500
 
-# --- End of Updated Chatbot Code ---
+# ---------------- End of Chatbot Updated Section ---------------- #
 
 @app.route('/summarize', methods=['POST'])
 def summarize():
@@ -440,4 +366,4 @@ def test():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
