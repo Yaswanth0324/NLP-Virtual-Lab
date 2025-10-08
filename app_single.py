@@ -365,5 +365,7 @@ def test():
     return "Flask app is working! Routes are properly registered."
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
+# if __name__ == '__main__':
+#     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
+if __name__ == "__main__":
+    app.run()
