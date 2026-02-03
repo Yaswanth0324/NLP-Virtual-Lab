@@ -137,7 +137,7 @@ Push code to GitHub
 
 Create a new Web Service and connect repo
 
-Build Command: pip install -r requirements.txt
+Build Command: pip install -r requirements.txt && python scripts/download_nltk_data.py
 
 Start Command: gunicorn app_single:app (add gunicorn to requirements.txt)
 

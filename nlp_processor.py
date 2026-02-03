@@ -107,6 +107,7 @@ except LookupError:
 
 class NLPProcessor:
     def __init__(self):
+        _ensure_nltk_data()
         self.stemmer = PorterStemmer()
         self.lemmatizer = WordNetLemmatizer()
         self.sentiment_analyzer = SentimentIntensityAnalyzer()

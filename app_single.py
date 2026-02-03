@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import psycopg2 # For connecting to PostgreSQL
 import audioop 
 import torch 
+from nlp_processor import NLPProcessor
 
 try:
     import requests
@@ -32,6 +33,9 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Initialize NLPProcessor once at startup to avoid repeated NLTK downloads/checks per request
+_nlp_processor = NLPProcessor()
 
 # Initialize heavy model pipelines lazily (load on first request)
 _summarizer = None
@@ -231,9 +235,7 @@ def question_answering():
         return jsonify({'error': 'Both question and context are required.'}), 400
 
     try:
-        from nlp_processor import NLPProcessor
-        processor = NLPProcessor()
-        result = processor.question_answer(question, context)
+        result = _nlp_processor.question_answer(question, context)
         return jsonify(result)
     except Exception as e:
         logging.exception('QA endpoint failed')
@@ -293,9 +295,6 @@ def quiz(module_name):
 @app.route('/api/process', methods=['POST'])
 def process_text():
     try:
-        from nlp_processor import NLPProcessor
-        nlp_processor = NLPProcessor()
-
         data = request.get_json()
         text = data.get('text', '').strip()
         operation = data.get('operation', '').strip()
@@ -312,9 +311,9 @@ def process_text():
                 src_lang = src_lang.strip() or 'auto'
             if isinstance(dest_lang, str):
                 dest_lang = dest_lang.strip() or 'en'
-            result = nlp_processor.translate_text(text, src_lang=src_lang, dest_lang=dest_lang)
+            result = _nlp_processor.translate_text(text, src_lang=src_lang, dest_lang=dest_lang)
         else:
-            result = nlp_processor.process(text, operation)
+            result = _nlp_processor.process(text, operation)
         return jsonify(result)
 
     except Exception as e:
