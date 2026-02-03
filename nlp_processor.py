@@ -61,6 +61,15 @@ def _ensure_nltk_data():
     except LookupError:
         nltk.download('maxent_ne_chunker')
 
+    # Newer NLTK models for NE chunker
+    try:
+        nltk.data.find('chunkers/maxent_ne_chunker_tab')
+    except LookupError:
+        try:
+            nltk.download('maxent_ne_chunker_tab')
+        except Exception:
+            pass
+
     try:
         nltk.data.find('corpora/words')
     except LookupError:
