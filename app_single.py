@@ -33,11 +33,20 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Initialize summarization pipeline lazily and prefer PyTorch backend
+# Initialize heavy model pipelines lazily (load on first request)
 _summarizer = None
+_text_generator = None
+
+# Set DISABLE_HEAVY_MODELS=1 to keep memory low (1 GB target)
+DISABLE_HEAVY_MODELS = os.environ.get("DISABLE_HEAVY_MODELS", "").strip() in {"1", "true", "True", "YES", "yes"}
+
+def _heavy_models_disabled_response():
+    return jsonify({'error': 'Heavy NLP models are disabled. Set DISABLE_HEAVY_MODELS=0 to enable.'}), 503
 
 def get_summarizer():
     global _summarizer
+    if DISABLE_HEAVY_MODELS:
+        raise RuntimeError("Heavy NLP models are disabled.")
     if _summarizer is None:
         try:
             _summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", framework="pt")
@@ -46,30 +55,22 @@ def get_summarizer():
             _summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
     return _summarizer
 
-# Initialize text-generation pipeline lazily and prefer PyTorch backend
-
-_text_generator = None
-
 def get_text_generator():
     global _text_generator
+    if DISABLE_HEAVY_MODELS:
+        raise RuntimeError("Heavy NLP models are disabled.")
     if _text_generator is None:
         try:
-            # Import pipeline from the transformers library
-            from transformers import pipeline
-
-            # Attempt to use the 'pt' framework (PyTorch)
             _text_generator = pipeline("text-generation", model="gpt2", framework="pt")
             logging.info("Text generation pipeline loaded successfully with PyTorch.")
         except ImportError:
-            # Fallback if PyTorch is not installed
             logging.warning("PyTorch not found. Attempting to load text-generation pipeline without specifying framework.")
             try:
-                from transformers import pipeline
                 _text_generator = pipeline("text-generation", model="gpt2")
                 logging.info("Text generation pipeline loaded successfully without a specified framework.")
             except Exception as e:
                 logging.error(f"Failed to load text generation pipeline: {e}")
-                _text_generator = None # Ensure it remains None on failure
+                _text_generator = None
 
     if _text_generator is None:
         raise RuntimeError("Failed to initialize text generation pipeline. Please check your transformers and PyTorch installation.")
@@ -170,6 +171,8 @@ def chatbot_api():
 
 @app.route('/summarize', methods=['POST'])
 def summarize():
+    if DISABLE_HEAVY_MODELS:
+        return _heavy_models_disabled_response()
     data = request.get_json()
     # Extract input data
     text = data.get('text', '')
@@ -190,6 +193,8 @@ def summarize():
 
 @app.route('/generate', methods=['POST'])
 def generate():
+    if DISABLE_HEAVY_MODELS:
+        return _heavy_models_disabled_response()
     data = request.get_json()
     prompt = data.get('prompt', '')
     max_length = data.get('max_length', 50)
@@ -216,6 +221,8 @@ def generate():
 
 @app.route('/qa', methods=['POST'])
 def question_answering():
+    if DISABLE_HEAVY_MODELS:
+        return _heavy_models_disabled_response()
     data = request.get_json()
     question = (data.get('question') or '').strip()
     context = (data.get('context') or '').strip()
@@ -365,7 +372,5 @@ def test():
     return "Flask app is working! Routes are properly registered."
 
 
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
-if __name__ == "__main__":
-    app.run()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
